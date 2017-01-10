@@ -1,77 +1,77 @@
-#ifndef NUCLEUS_LOADER_H
-#define NUCLEUS_LOADER_H
+using System.Collections.Generic;
 
-#include <stdint.h>
-#include <string>
-#include <vector>
+namespace Nucleus
+{
+    class Symbol
+    {
+        public
+          enum SymbolType
+        {
+            SYM_TYPE_UKN = 0x000,
+            SYM_TYPE_FUNC = 0x001
+        };
 
-class Binary;
-class Section;
-class Symbol;
+        public Symbol() { type = SymbolType.SYM_TYPE_UKN; name = null; addr = 0; }
 
-class Symbol {
-public:
-  enum SymbolType {
-    SYM_TYPE_UKN  = 0x000,
-    SYM_TYPE_FUNC = 0x001
-  };
+        public SymbolType type;
+        public string name;
+        public ulong addr;
+    };
 
-  Symbol() : type(SYM_TYPE_UKN), name(), addr(0) {}
+    public partial class Section
+    {
+        public
+          enum SectionType
+        {
+            SEC_TYPE_NONE = 0,
+            SEC_TYPE_CODE = 1,
+            SEC_TYPE_DATA = 2
+        };
 
-  unsigned    type;
-  std::string name;
-  uint64_t    addr;
-};
+        public Section() { binary = (null); type = (0); vma = (0); size = (0); bytes = (null); }
 
-class Section {
-public:
-  enum SectionType {
-    SEC_TYPE_NONE = 0,
-    SEC_TYPE_CODE = 1,
-    SEC_TYPE_DATA = 2
-  };
+        public bool contains(ulong addr) { return (addr >= vma) && (addr - vma < size); }
+        public bool is_import_table() { return name == ".plt"; }
 
-  Section() : binary(NULL), type(0), vma(0), size(0), bytes(NULL) {}
+        public Binary binary;
+        public string name;
+        public SectionType type;
+        public ulong vma;
+        public ulong size;
+        public byte[] bytes;
+    };
 
-  bool contains        (uint64_t addr) { return (addr >= vma) && (addr-vma < size); }
-  bool is_import_table ()              { return name == ".plt"; }
+    public partial class Binary
+    {
+        public
+          enum BinaryType
+        {
+            BIN_TYPE_AUTO = 0,
+            BIN_TYPE_RAW = 1,
+            BIN_TYPE_ELF = 2,
+            BIN_TYPE_PE = 3
+        };
+        public enum BinaryArch
+        {
+            ARCH_NONE = 0,
+            ARCH_X86 = 1
+        };
 
-  Binary       *binary;
-  std::string   name;
-  unsigned      type;
-  uint64_t      vma;
-  uint64_t      size;
-  uint8_t       *bytes;
-};
+        public Binary() { type = (0); arch = (0); bits = (0); entry = (0); }
 
-class Binary {
-public:
-  enum BinaryType {
-    BIN_TYPE_AUTO = 0,
-    BIN_TYPE_RAW  = 1,
-    BIN_TYPE_ELF  = 2,
-    BIN_TYPE_PE   = 3
-  };
-  enum BinaryArch {
-    ARCH_NONE = 0,
-    ARCH_X86  = 1
-  };
+        public string filename;
+        public BinaryType type;
+        public string type_str;
+        public BinaryArch arch;
+        public string arch_str;
+        public uint bits;
+        public ulong entry;
+        public List<Section> sections;
+        public List<Symbol> symbols;
+    }
 
-  Binary() : type(0), arch(0), bits(0), entry(0) {}
+    //int  load_binary   (string &fname, Binary *bin, Binary::BinaryType type);
+    //void unload_binary (Binary *bin);
 
-  std::string          filename;
-  unsigned             type;
-  std::string          type_str;
-  unsigned             arch;
-  std::string          arch_str;
-  unsigned             bits;
-  uint64_t             entry;
-  std::vector<Section> sections;
-  std::vector<Symbol>  symbols;
-};
 
-int  load_binary   (std::string &fname, Binary *bin, Binary::BinaryType type);
-void unload_binary (Binary *bin);
-
-#endif /* NUCLEUS_LOADER_H */
-
+}

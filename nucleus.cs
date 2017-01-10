@@ -38,15 +38,15 @@ main(int argc, char *argv[])
           bin.filename.c_str(), 
           bin.type_str.c_str(), bin.arch_str.c_str(), 
           bin.bits, bin.entry);
-  for(i = 0; i < bin.sections.size(); i++) {
+  for(i = 0; i < bin.sections.Count; i++) {
     sec = &bin.sections[i];
     verbose(1, "  0x%016jx %-8ju %-20s %s", 
             sec->vma, sec->size, sec->name.c_str(), 
             sec->type == Section::SEC_TYPE_CODE ? "CODE" : "DATA");
   }
-  if(bin.symbols.size() > 0) {
+  if(bin.symbols.Count > 0) {
     verbose(1, "scanned symbol tables");
-    for(i = 0; i < bin.symbols.size(); i++) {
+    for(i = 0; i < bin.symbols.Count; i++) {
       sym = &bin.symbols[i];
       verbose(1, "  %-40s 0x%016jx %s", 
               sym->name.c_str(), sym->addr, 
@@ -66,7 +66,7 @@ main(int argc, char *argv[])
     cfg.print_function_summaries(stdout);
   } else {
     fprintf(stdout, "\n");
-    for(auto &dis: disasm) {
+    foreach (var dis in  disasm) {
       dis.print_BBs(stdout);
     }
     cfg.print_functions(stdout);

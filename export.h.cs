@@ -8,8 +8,8 @@
 #include "disasm.h"
 #include "cfg.h"
 
-int export_bin2ida (std::string &fname, Binary *bin, std::list<DisasmSection> *disasm, CFG *cfg);
-int export_cfg2dot (std::string &fname, CFG *cfg);
+int export_bin2ida (string &fname, Binary *bin, std::list<DisasmSection> *disasm, CFG *cfg);
+int export_cfg2dot (string &fname, CFG *cfg);
 
 #endif /* NUCLEUS_EXPORT_H */
 

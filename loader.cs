@@ -30,7 +30,7 @@ const char *binary_arch_descr[][2] = {
 
 
 static bfd*
-open_bfd(std::string &fname)
+open_bfd(string &fname)
 {
   static int bfd_inited = 0;
 
@@ -98,7 +98,7 @@ load_symbols_bfd(bfd *bfd_h, Binary *bin)
         bin->symbols.push_back(Symbol());
         sym = &bin->symbols.back();
         sym->type |= Symbol::SYM_TYPE_FUNC;
-        sym->name = std::string(bfd_symtab[i]->name);
+        sym->name = string(bfd_symtab[i]->name);
         sym->addr = bfd_asymbol_value(bfd_symtab[i]);
       }
     }
@@ -147,7 +147,7 @@ load_dynsym_bfd(bfd *bfd_h, Binary *bin)
         bin->symbols.push_back(Symbol());
         sym = &bin->symbols.back();
         sym->type |= Symbol::SYM_TYPE_FUNC;
-        sym->name = std::string(bfd_dynsym[i]->name);
+        sym->name = string(bfd_dynsym[i]->name);
         sym->addr = bfd_asymbol_value(bfd_dynsym[i]);
       }
     }
@@ -196,7 +196,7 @@ load_sections_bfd(bfd *bfd_h, Binary *bin)
     sec = &bin->sections.back();
 
     sec->binary = bin;
-    sec->name   = std::string(secname);
+    sec->name   = string(secname);
     sec->type   = sectype;
     sec->vma    = vma;
     sec->size   = size;
@@ -217,7 +217,7 @@ load_sections_bfd(bfd *bfd_h, Binary *bin)
 
 
 int
-load_binary_bfd(std::string &fname, Binary *bin, Binary::BinaryType type)
+load_binary_bfd(string &fname, Binary *bin, Binary::BinaryType type)
 {
   int ret;
   bfd *bfd_h;
@@ -230,10 +230,10 @@ load_binary_bfd(std::string &fname, Binary *bin, Binary::BinaryType type)
     goto fail;
   }
 
-  bin->filename = std::string(fname);
+  bin->filename = string(fname);
   bin->entry    = bfd_get_start_address(bfd_h);
 
-  bin->type_str = std::string(bfd_h->xvec->name);
+  bin->type_str = string(bfd_h->xvec->name);
   switch(bfd_h->xvec->flavour) {
   case bfd_target_elf_flavour:
     bin->type = Binary::BIN_TYPE_ELF;
@@ -248,7 +248,7 @@ load_binary_bfd(std::string &fname, Binary *bin, Binary::BinaryType type)
   }
 
   bfd_info = bfd_get_arch_info(bfd_h);
-  bin->arch_str = std::string(bfd_info->printable_name);
+  bin->arch_str = string(bfd_info->printable_name);
   switch(bfd_info->mach) {
   case bfd_mach_i386_i386:
     bin->arch = Binary::ARCH_X86; 
@@ -283,7 +283,7 @@ cleanup:
 
 
 int
-load_binary_raw(std::string &fname, Binary *bin, Binary::BinaryType type)
+load_binary_raw(string &fname, Binary *bin, Binary::BinaryType type)
 {
   int ret;
   long fsize;
@@ -292,9 +292,9 @@ load_binary_raw(std::string &fname, Binary *bin, Binary::BinaryType type)
 
   f = NULL;
 
-  bin->filename = std::string(fname);
+  bin->filename = string(fname);
   bin->type     = type;
-  bin->type_str = std::string("raw");
+  bin->type_str = string("raw");
 
   if(options.binary.arch == Binary::ARCH_NONE) {
     print_err("cannot determine binary architecture, specify manually");
@@ -302,7 +302,7 @@ load_binary_raw(std::string &fname, Binary *bin, Binary::BinaryType type)
   }
   bin->arch     = options.binary.arch;
   bin->bits     = options.binary.bits;
-  bin->arch_str = std::string(binary_arch_descr[(int)options.binary.arch][0]);
+  bin->arch_str = string(binary_arch_descr[(int)options.binary.arch][0]);
   bin->entry    = 0;
 
   if(!bin->bits) {
@@ -319,7 +319,7 @@ load_binary_raw(std::string &fname, Binary *bin, Binary::BinaryType type)
   sec = &bin->sections.back();
 
   sec->binary = bin;
-  sec->name   = std::string("raw");
+  sec->name   = string("raw");
   sec->type   = Section::SEC_TYPE_CODE;
   sec->vma    = options.binary.base_vma;
 
@@ -365,7 +365,7 @@ cleanup:
 
 
 int
-load_binary(std::string &fname, Binary *bin, Binary::BinaryType type)
+load_binary(string &fname, Binary *bin, Binary::BinaryType type)
 {
   if(type == Binary::BIN_TYPE_RAW) {
     return load_binary_raw(fname, bin, type);
@@ -381,7 +381,7 @@ unload_binary(Binary *bin)
   size_t i;
   Section *sec;
 
-  for(i = 0; i < bin->sections.size(); i++) {
+  for(i = 0; i < bin->sections.Count; i++) {
     sec = &bin->sections[i];
     if(sec->bytes) {
       free(sec->bytes);

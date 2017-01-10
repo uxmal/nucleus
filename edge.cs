@@ -3,10 +3,10 @@
 #include "edge.h"
 
 
-std::string
+string
 Edge::type2str()
 {
-  std::string s;
+  string s;
 
   switch(this->type) {
   case EDGE_TYPE_JMP:

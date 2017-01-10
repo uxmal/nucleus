@@ -1,34 +1,25 @@
-#ifndef NUCLEUS_OPTIONS_H
-#define NUCLEUS_OPTIONS_H
-
-#include <stdint.h>
-
-#include <string>
-
-#include "bb.h"
-#include "loader.h"
-#include "disasm.h"
-
-struct options {
-  int verbosity;
-  int warnings;
-  int only_code_sections;
-  int allow_privileged;
-  int summarize_functions;
+namespace Nucleus
+{ 
+public class options {
+  public int verbosity;
+  public int warnings;
+  public bool only_code_sections;
+  public int allow_privileged;
+  public int summarize_functions;
 
   struct {
-    std::string real;
-    std::string dir;
-    std::string base;
+    string real;
+    string dir;
+    string base;
   } nucleuspath;
 
   struct {
-    std::string ida;
-    std::string dot;
+    string ida;
+    string dot;
   } exports;
 
   struct {
-    std::string        filename;
+    string        filename;
     Binary::BinaryType type;
     Binary::BinaryArch arch;
     unsigned           bits;
@@ -36,7 +27,7 @@ struct options {
   } binary;
 
   struct {
-    std::string name;
+    string name;
     double   (*score_function)  (DisasmSection*, BB*);
     unsigned (*mutate_function) (DisasmSection*, BB*, BB**);
     int      (*select_function) (DisasmSection*, BB*, unsigned);

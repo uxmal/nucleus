@@ -1,10 +1,7 @@
-#ifndef NUCLEUS_DATAREGION_H
-#define NUCLEUS_DATAREGION_H
-
-#include <stdint.h>
-
-class DataRegion {
-public:
+namespace Nucleus
+{ 
+    public partial class DataRegion {
+public
   DataRegion() : start(0), end(0) {}
   DataRegion(const DataRegion &d) : start(d.start), end(d.end) {}
 

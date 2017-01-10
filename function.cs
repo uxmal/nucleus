@@ -21,14 +21,14 @@ Function::print(FILE *out)
     fprintf(out, "function %ju: start@0x%016jx end@0x%016jx (entry point unknown)\n", id, start, end);
   } else {
     i = 0;
-    for(auto entry_bb: entry) {
+    foreach (var entry_bb in  entry) {
       offset = 0;
-      for(auto &e: entry_bb->ancestors) {
+      foreach (var e in  entry_bb->ancestors) {
         if(e.type == Edge::EDGE_TYPE_CALL) offset = e.offset;
       }
       if(i == 0) {
         fprintf(out, "function %ju: entry@0x%016jx %ju bytes\n", id, entry_bb->start + offset, (end-entry_bb->start));
-        if(entry.size() > 1) {
+        if(entry.Count > 1) {
           fprintf(out, "/-- alternative entry points:\n");
         }
       } else {
@@ -37,7 +37,7 @@ Function::print(FILE *out)
       i++;
     }
   }
-  for(auto &bb: BBs) {
+  foreach (var bb in  BBs) {
     fprintf(out, "    BB@0x%016jx\n", bb->start);
   }
 }
@@ -54,7 +54,7 @@ Function::print_summary(FILE *out)
   } else {
     entry_bb = entry.front();
     offset = 0;
-    for(auto &e: entry_bb->ancestors) {
+    foreach (var e in  entry_bb->ancestors) {
       if(e.type == Edge::EDGE_TYPE_CALL) offset = e.offset;
     }
     fprintf(out, "0x%016jx\t%ju\n", entry_bb->start + offset, (end-entry_bb->start));
@@ -75,18 +75,18 @@ Function::find_entry()
    * (3) Starting address of the function (only if no other entry found)
    */
 
-  for(auto bb: this->BBs) {
+  foreach (var bb in  this->BBs) {
     if(bb->is_called()) {
       called.push_back(bb);
     }
   }
 
   called.sort(compare_ptr<BB>);
-  for(auto bb: called) this->entry.push_back(bb);
+  foreach (var bb in  called) this->entry.push_back(bb);
 
-  for(auto bb: this->BBs) {
+  foreach (var bb in  this->BBs) {
     reached_directly = false;
-    for(auto &e: bb->ancestors) {
+    foreach (var e in  bb->ancestors) {
       if(e.offset == 0) reached_directly = true;
     }
     if(!reached_directly) {
@@ -95,7 +95,7 @@ Function::find_entry()
   }
 
   headers.sort(compare_ptr<BB>);
-  for(auto bb: headers) this->entry.push_back(bb);
+  foreach (var bb in  headers) this->entry.push_back(bb);
 
   if(this->entry.empty()) {
     if(this->cfg->start2bb.count(start)) {

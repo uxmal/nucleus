@@ -1,171 +1,195 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <assert.h>
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 
-#include <vector>
-#include <list>
-#include <map>
-#include <queue>
-#include <string>
-#include <algorithm>
-
-#include <capstone/capstone.h>
-
-#include "loader.h"
-#include "bb.h"
-#include "insn.h"
-#include "dataregion.h"
-#include "disasm.h"
-#include "strategy.h"
-#include "util.h"
-#include "options.h"
-#include "log.h"
-
-
-/*******************************************************************************
- **                              DisasmSection                                **
- ******************************************************************************/
-void
-DisasmSection::print_BBs(FILE *out)
+namespace Nucleus
 {
-  fprintf(out, "<Section %s %s @0x%016jx (size %ju)>\n\n", 
-          section->name.c_str(), (section->type == Section::SEC_TYPE_CODE) ? "C" : "D", 
-          section->vma, section->size);
-  sort_BBs();
-  for(auto &bb: BBs) {
-    bb.print(out);
-  }
-}
 
+    public partial class AddressMap
+    {
+        [Flags]
+        public enum DisasmRegion
+        {
+            DISASM_REGION_UNMAPPED = 0x0000,
+            DISASM_REGION_CODE = 0x0001,
+            DISASM_REGION_DATA = 0x0002,
+            DISASM_REGION_INS_START = 0x0100,
+            DISASM_REGION_BB_START = 0x0200,
+            DISASM_REGION_FUNC_START = 0x0400
+        };
 
-void
-DisasmSection::sort_BBs()
-{
-  BBs.sort(BB::comparator);
-}
+        AddressMap() { }
 
-/*******************************************************************************
- **                                AddressMap                                 **
- ******************************************************************************/
-void
-AddressMap::insert(uint64_t addr)
-{
-  if(!contains(addr)) {
-    unmapped.push_back(addr);
-    unmapped_lookup[addr] = unmapped.size()-1;
-  }
-}
+        //void insert(ulong addr);
+        //bool contains(ulong addr);
+        //unsigned get_addr_type(ulong addr);
+        //void set_addr_type(ulong addr, unsigned type);
+        //void add_addr_flag(ulong addr, unsigned flag);
+        //unsigned addr_type(ulong addr);
 
+        //uint unmapped_count();
+        //ulong get_unmapped(uint i);
+        //void erase(ulong addr);
+        //void erase_unmapped(ulong addr);
 
-bool
-AddressMap::contains(uint64_t addr)
-{
-  return addrmap.count(addr) || unmapped_lookup.count(addr);
-}
-
-
-unsigned
-AddressMap::get_addr_type(uint64_t addr)
-{
-  assert(contains(addr));
-  if(!contains(addr)) {
-    return AddressMap::DISASM_REGION_UNMAPPED;
-  } else {
-    return addrmap[addr];
-  }
-}
-unsigned AddressMap::addr_type(uint64_t addr) { return get_addr_type(addr); }
-
-
-void
-AddressMap::set_addr_type(uint64_t addr, unsigned type)
-{
-  assert(contains(addr));
-  if(contains(addr)) {
-    if(type != AddressMap::DISASM_REGION_UNMAPPED) {
-      erase_unmapped(addr);
+        private SortedList<ulong, DisasmRegion> addrmap;
+        private List<ulong> unmapped;
+        private SortedList<ulong, uint> unmapped_lookup;
     }
-    addrmap[addr] = type;
-  }
-}
+    public partial class DisasmSection
+    {
+        public DisasmSection() { section = null; }
+
+        //void print_BBs(FILE*out);
+
+        public Section section;
+        public AddressMap addrmap;
+        public List<BB> BBs;
+        public List<DataRegion> data;
+
+        //int nucleus_disasm(Binary* bin, std::list<DisasmSection>* disasm);
 
 
-void
-AddressMap::add_addr_flag(uint64_t addr, unsigned flag)
-{
-  assert(contains(addr));
-  if(contains(addr)) {
-    if(flag != AddressMap::DISASM_REGION_UNMAPPED) {
-      erase_unmapped(addr);
+        public void print_BBs(TextWriter @out)
+        {
+            @out.WriteLine("<Section {0} {1} @0x{2:X16} (size %{3})>",
+                    section.name, (section.type == Section.SectionType.SEC_TYPE_CODE) ? "C" : "D",
+                    section.vma, section.size);
+            @out.WriteLine();
+            sort_BBs();
+            foreach (var bb in BBs) {
+                bb.print(@out);
+            }
+        }
+
+
+        void
+        sort_BBs()
+        {
+            BBs.Sort(BB.comparator);
+        }
     }
-    addrmap[addr] |= flag;
-  }
-}
+
+    public partial class AddressMap
+    {
+        void
+        insert(ulong addr)
+        {
+            if (!contains(addr)) {
+                unmapped.Add(addr);
+                unmapped_lookup[addr] = (uint)unmapped.Count - 1;
+            }
+        }
 
 
-size_t
-AddressMap::unmapped_count()
-{
-  return unmapped.size();
-}
+        bool
+        contains(ulong addr)
+        {
+            return addrmap.ContainsKey(addr) || unmapped_lookup.ContainsKey(addr);
+        }
 
 
-uint64_t
-AddressMap::get_unmapped(size_t i)
-{
-  return unmapped[i];
-}
+        DisasmRegion
+        get_addr_type(ulong addr)
+        {
+            Debug.Assert(contains(addr));
+            if (!contains(addr)) {
+                return AddressMap.DisasmRegion.DISASM_REGION_UNMAPPED;
+            } else {
+                return addrmap[addr];
+            }
+        }
+        DisasmRegion addr_type(ulong addr) { return get_addr_type(addr); }
 
 
-void
-AddressMap::erase(uint64_t addr)
-{
-  if(addrmap.count(addr)) {
-    addrmap.erase(addr);
-  }
-  erase_unmapped(addr);
-}
+        void
+        set_addr_type(ulong addr, AddressMap.DisasmRegion type)
+        {
+            Debug.Assert(contains(addr));
+            if (contains(addr)) {
+                if (type != AddressMap.DisasmRegion.DISASM_REGION_UNMAPPED) {
+                    erase_unmapped(addr);
+                }
+                addrmap[addr] = type;
+            }
+        }
 
 
-void
-AddressMap::erase_unmapped(uint64_t addr)
-{
-  size_t i;
+        void
+        add_addr_flag(ulong addr, DisasmRegion flag)
+        {
+            Debug.Assert(contains(addr));
+            if (contains(addr)) {
+                if (flag != DisasmRegion.DISASM_REGION_UNMAPPED) {
+                    erase_unmapped(addr);
+                }
+                addrmap[addr] |= flag;
+            }
+        }
 
-  if(unmapped_lookup.count(addr)) {
-    if(unmapped_count() > 1) {
-      i = unmapped_lookup[addr];
-      unmapped[i] = unmapped.back();
-      unmapped_lookup[unmapped.back()] = i;
+
+        uint
+        unmapped_count()
+        {
+            return (uint)unmapped.Count;
+        }
+
+
+        ulong
+        get_unmapped(int i)
+        {
+            return unmapped[i];
+        }
+
+
+        void
+        erase(ulong addr)
+        {
+            if (addrmap.ContainsKey(addr)) {
+                addrmap.Remove(addr);
+            }
+            erase_unmapped(addr);
+        }
+
+
+        void erase_unmapped(ulong addr)
+        {
+            uint i;
+
+            if (unmapped_lookup.ContainsKey(addr)) {
+                if (unmapped_count() > 1) {
+                    i = unmapped_lookup[addr];
+                    unmapped[(int)i] = unmapped[unmapped.Count - 1];
+                    unmapped_lookup[unmapped[unmapped.Count - 1]] = i;
+                }
+                unmapped_lookup.Remove(addr);
+                unmapped.RemoveAt(unmapped.Count - 1);
+            }
+        }
     }
-    unmapped_lookup.erase(addr);
-    unmapped.pop_back();
-  }
-}
 
+    public partial class Nucleus
+    { 
 /*******************************************************************************
  **                            Disassembly engine                             **
  ******************************************************************************/
-static int
-init_disasm(Binary *bin, std::list<DisasmSection> *disasm)
+        public static int 
+init_disasm(Binary bin, List<DisasmSection> disasm)
 {
-  size_t i;
-  uint64_t vma;
-  Section *sec;
-  DisasmSection *dis;
 
-  disasm->clear();
-  for(i = 0; i < bin->sections.size(); i++) {
-    sec = &bin->sections[i];
-    if((sec->type != Section::SEC_TYPE_CODE)
-       && !(!options.only_code_sections && (sec->type == Section::SEC_TYPE_DATA))) continue;
+  disasm.Clear();
+  for(var i = 0; i < bin.sections.Count; i++) {
+    var sec = bin.sections[i];
+    if((sec.type != Section.SectionType.SEC_TYPE_CODE)
+       && !(!options.only_code_sections && (sec.type == Section.SectionType.SEC_TYPE_DATA))) continue;
 
-    disasm->push_back(DisasmSection());
-    dis = &disasm->back();
+                var dis = new DisasmSection();
+                disasm.Add(dis);
 
-    dis->section = sec;
-    for(vma = sec->vma; vma < (sec->vma+sec->size); vma++) {
-      dis->addrmap.insert(vma);
+    dis.section = sec;
+    for(vma = sec.vma; vma < (sec.vma+sec.size); vma++) {
+      dis.addrmap.insert(vma);
     }
   }
   verbose(1, "disassembler initialized");
@@ -175,7 +199,7 @@ init_disasm(Binary *bin, std::list<DisasmSection> *disasm)
 
 
 static int
-fini_disasm(Binary *bin, std::list<DisasmSection> *disasm)
+fini_disasm(Binary bin, List<DisasmSection> disasm)
 {
   verbose(1, "disassembly complete");
 
@@ -184,9 +208,9 @@ fini_disasm(Binary *bin, std::list<DisasmSection> *disasm)
 
 
 static int
-is_cs_nop_ins(cs_insn *ins)
+is_cs_nop_ins(cs_insn ins)
 {
-  switch(ins->id) {
+  switch(ins.id) {
   case X86_INS_NOP:
   case X86_INS_FNOP:
     return 1;
@@ -204,47 +228,47 @@ is_cs_semantic_nop_ins(cs_insn *ins)
   /* XXX: to make this truly platform-independent, we need some real
    * semantic analysis, but for now checking known cases is sufficient */
 
-  x86 = &ins->detail->x86;
-  switch(ins->id) {
+  x86 = &ins.detail.x86;
+  switch(ins.id) {
   case X86_INS_MOV:
     /* mov reg,reg */
-    if((x86->op_count == 2) 
-       && (x86->operands[0].type == X86_OP_REG) 
-       && (x86->operands[1].type == X86_OP_REG) 
-       && (x86->operands[0].reg == x86->operands[1].reg)) {
+    if((x86.op_count == 2) 
+       && (x86.operands[0].type == X86_OP_REG) 
+       && (x86.operands[1].type == X86_OP_REG) 
+       && (x86.operands[0].reg == x86.operands[1].reg)) {
       return 1;
     }
     return 0;
   case X86_INS_XCHG:
     /* xchg reg,reg */
-    if((x86->op_count == 2) 
-       && (x86->operands[0].type == X86_OP_REG) 
-       && (x86->operands[1].type == X86_OP_REG) 
-       && (x86->operands[0].reg == x86->operands[1].reg)) {
+    if((x86.op_count == 2) 
+       && (x86.operands[0].type == X86_OP_REG) 
+       && (x86.operands[1].type == X86_OP_REG) 
+       && (x86.operands[0].reg == x86.operands[1].reg)) {
       return 1;
     }
     return 0;
   case X86_INS_LEA:
     /* lea    reg,[reg + 0x0] */
-    if((x86->op_count == 2)
-       && (x86->operands[0].type == X86_OP_REG)
-       && (x86->operands[1].type == X86_OP_MEM)
-       && (x86->operands[1].mem.segment == X86_REG_INVALID)
-       && (x86->operands[1].mem.base == x86->operands[0].reg)
-       && (x86->operands[1].mem.index == X86_REG_INVALID)
+    if((x86.op_count == 2)
+       && (x86.operands[0].type == X86_OP_REG)
+       && (x86.operands[1].type == X86_OP_MEM)
+       && (x86.operands[1].mem.segment == X86_REG_INVALID)
+       && (x86.operands[1].mem.base == x86.operands[0].reg)
+       && (x86.operands[1].mem.index == X86_REG_INVALID)
        /* mem.scale is irrelevant since index is not used */
-       && (x86->operands[1].mem.disp == 0)) {
+       && (x86.operands[1].mem.disp == 0)) {
       return 1;
     }
     /* lea    reg,[reg + eiz*x + 0x0] */
-    if((x86->op_count == 2)
-       && (x86->operands[0].type == X86_OP_REG)
-       && (x86->operands[1].type == X86_OP_MEM)
-       && (x86->operands[1].mem.segment == X86_REG_INVALID)
-       && (x86->operands[1].mem.base == x86->operands[0].reg)
-       && (x86->operands[1].mem.index == X86_REG_EIZ)
+    if((x86.op_count == 2)
+       && (x86.operands[0].type == X86_OP_REG)
+       && (x86.operands[1].type == X86_OP_MEM)
+       && (x86.operands[1].mem.segment == X86_REG_INVALID)
+       && (x86.operands[1].mem.base == x86.operands[0].reg)
+       && (x86.operands[1].mem.index == X86_REG_EIZ)
        /* mem.scale is irrelevant since index is the zero-register */
-       && (x86->operands[1].mem.disp == 0)) {
+       && (x86.operands[1].mem.disp == 0)) {
       return 1;
     }
     return 0;
@@ -257,7 +281,7 @@ is_cs_semantic_nop_ins(cs_insn *ins)
 static int
 is_cs_trap_ins(cs_insn *ins)
 {
-  switch(ins->id) {
+  switch(ins.id) {
   case X86_INS_INT3:
   case X86_INS_UD2:
     return 1;
@@ -277,10 +301,10 @@ is_cs_cflow_group(uint8_t g)
 static int
 is_cs_cflow_ins(cs_insn *ins)
 {
-  size_t i;
+  uint i;
 
-  for(i = 0; i < ins->detail->groups_count; i++) {
-    if(is_cs_cflow_group(ins->detail->groups[i])) {
+  for(i = 0; i < ins.detail.groups_count; i++) {
+    if(is_cs_cflow_group(ins.detail.groups[i])) {
       return 1;
     }
   }
@@ -292,7 +316,7 @@ is_cs_cflow_ins(cs_insn *ins)
 static int
 is_cs_call_ins(cs_insn *ins)
 {
-  switch(ins->id) {
+  switch(ins.id) {
   case X86_INS_CALL:
   case X86_INS_LCALL:
     return 1;
@@ -305,7 +329,7 @@ is_cs_call_ins(cs_insn *ins)
 static int
 is_cs_ret_ins(cs_insn *ins)
 {
-  switch(ins->id) {
+  switch(ins.id) {
   case X86_INS_RET:
   case X86_INS_RETF:
     return 1;
@@ -318,7 +342,7 @@ is_cs_ret_ins(cs_insn *ins)
 static int
 is_cs_unconditional_jmp_ins(cs_insn *ins)
 {
-  switch(ins->id) {
+  switch(ins.id) {
   case X86_INS_JMP:
     return 1;
   default:
@@ -330,7 +354,7 @@ is_cs_unconditional_jmp_ins(cs_insn *ins)
 static int
 is_cs_conditional_cflow_ins(cs_insn *ins)
 {
-  switch(ins->id) {
+  switch(ins.id) {
   case X86_INS_JAE:
   case X86_INS_JA:
   case X86_INS_JBE:
@@ -361,7 +385,7 @@ is_cs_conditional_cflow_ins(cs_insn *ins)
 static int
 is_cs_privileged_ins(cs_insn *ins)
 {
-  switch(ins->id) {
+  switch(ins.id) {
   case X86_INS_HLT:
   case X86_INS_IN:
   case X86_INS_INSB:
@@ -410,7 +434,7 @@ cs_to_nucleus_op_type(x86_op_type op)
 
 
 static int
-nucleus_disasm_bb_x86(Binary *bin, DisasmSection *dis, BB *bb)
+nucleus_disasm_bb_x86(Binary bin, DisasmSection dis, BB bb)
 {
   int init, ret, jmp, cflow, cond, call, nop, only_nop, priv, trap, ndisassembled;
   csh cs_dis;
@@ -418,15 +442,15 @@ nucleus_disasm_bb_x86(Binary *bin, DisasmSection *dis, BB *bb)
   cs_insn *cs_ins;
   cs_x86_op *cs_op;
   const uint8_t *pc;
-  uint64_t pc_addr, offset;
-  size_t i, j, n;
-  Instruction *ins;
-  Operand *op;
+  ulong pc_addr, offset;
+  uint i, j, n;
+  Instruction ins;
+  Operand op;
 
   init   = 0;
-  cs_ins = NULL;
+  cs_ins = null;
 
-  switch(bin->bits) {
+  switch(bin.bits) {
   case 64:
     cs_mode = CS_MODE_64;
     break;
@@ -437,7 +461,7 @@ nucleus_disasm_bb_x86(Binary *bin, DisasmSection *dis, BB *bb)
     cs_mode = CS_MODE_16;
     break;
   default:
-    print_err("unsupported bit width %u for architecture %s", bin->bits, bin->arch_str.c_str());
+    print_err("unsupported bit width %u for architecture %s", bin.bits, bin.arch_str.c_str());
     goto fail;
   }
 
@@ -455,35 +479,35 @@ nucleus_disasm_bb_x86(Binary *bin, DisasmSection *dis, BB *bb)
     goto fail;
   }
 
-  offset = bb->start - dis->section->vma;
-  if((bb->start < dis->section->vma) || (offset >= dis->section->size)) {
-    print_err("basic block address points outside of section '%s'", dis->section->name.c_str());
+  offset = bb.start - dis.section.vma;
+  if((bb.start < dis.section.vma) || (offset >= dis.section.size)) {
+    print_err("basic block address points outside of section '%s'", dis.section.name.c_str());
     goto fail;
   }
 
-  pc = dis->section->bytes + offset;
-  n = dis->section->size - offset;
-  pc_addr = bb->start;
-  bb->end = bb->start;
-  bb->section = dis->section;
+  pc = dis.section.bytes + offset;
+  n = dis.section.size - offset;
+  pc_addr = bb.start;
+  bb.end = bb.start;
+  bb.section = dis.section;
   ndisassembled = 0;
   only_nop = 0;
   while(cs_disasm_iter(cs_dis, &pc, &n, &pc_addr, cs_ins)) {
-    if(cs_ins->id == X86_INS_INVALID) {
-      bb->invalid = 1;
-      bb->end += 1;
+    if(cs_ins.id == X86_INS_INVALID) {
+      bb.invalid = 1;
+      bb.end += 1;
       break;
     }
-    if(!cs_ins->size) {
+    if(!cs_ins.size) {
       break;
     }
 
     trap  = is_cs_trap_ins(cs_ins);
     nop   = is_cs_nop_ins(cs_ins) 
             /* Visual Studio sometimes places semantic nops at the function start */
-            || (is_cs_semantic_nop_ins(cs_ins) && (bin->type != Binary::BIN_TYPE_PE))
+            || (is_cs_semantic_nop_ins(cs_ins) && (bin.type != Binary::BIN_TYPE_PE))
             /* Visual Studio uses int3 for padding */
-            || (trap && (bin->type == Binary::BIN_TYPE_PE));
+            || (trap && (bin.type == Binary::BIN_TYPE_PE));
     ret   = is_cs_ret_ins(cs_ins);
     jmp   = is_cs_unconditional_jmp_ins(cs_ins) || is_cs_conditional_cflow_ins(cs_ins);
     cond  = is_cs_conditional_cflow_ins(cs_ins);
@@ -497,62 +521,62 @@ nucleus_disasm_bb_x86(Binary *bin, DisasmSection *dis, BB *bb)
 
     ndisassembled++;
 
-    bb->end += cs_ins->size;
-    bb->insns.push_back(Instruction());
+    bb.end += cs_ins.size;
+    bb.insns.push_back(Instruction());
     if(priv) {
-      bb->privileged = true;
+      bb.privileged = true;
     }
     if(nop) {
-      bb->padding = true;
+      bb.padding = true;
     }
     if(trap) {
-      bb->trap = true;
+      bb.trap = true;
     }
 
-    ins = &bb->insns.back();
-    ins->start      = cs_ins->address;
-    ins->size       = cs_ins->size;
-    ins->addr_size  = cs_ins->detail->x86.addr_size;
-    ins->mnem       = std::string(cs_ins->mnemonic);
-    ins->op_str     = std::string(cs_ins->op_str);
-    ins->privileged = priv;
-    ins->trap       = trap;
-    if(nop)   ins->flags |= Instruction::INS_FLAG_NOP;
-    if(ret)   ins->flags |= Instruction::INS_FLAG_RET;
-    if(jmp)   ins->flags |= Instruction::INS_FLAG_JMP;
-    if(cond)  ins->flags |= Instruction::INS_FLAG_COND;
-    if(cflow) ins->flags |= Instruction::INS_FLAG_CFLOW;
-    if(call)  ins->flags |= Instruction::INS_FLAG_CALL;
+    ins = &bb.insns.back();
+    ins.start      = cs_ins.address;
+    ins.size       = cs_ins.size;
+    ins.addr_size  = cs_ins.detail.x86.addr_size;
+    ins.mnem       = string(cs_ins.mnemonic);
+    ins.op_str     = string(cs_ins.op_str);
+    ins.privileged = priv;
+    ins.trap       = trap;
+    if(nop)   ins.flags |= Instruction::INS_FLAG_NOP;
+    if(ret)   ins.flags |= Instruction::INS_FLAG_RET;
+    if(jmp)   ins.flags |= Instruction::INS_FLAG_JMP;
+    if(cond)  ins.flags |= Instruction::INS_FLAG_COND;
+    if(cflow) ins.flags |= Instruction::INS_FLAG_CFLOW;
+    if(call)  ins.flags |= Instruction::INS_FLAG_CALL;
 
-    for(i = 0; i < cs_ins->detail->x86.op_count; i++) {
-      cs_op = &cs_ins->detail->x86.operands[i];
-      ins->operands.push_back(Operand());
-      op = &ins->operands.back();
-      op->type = cs_to_nucleus_op_type(cs_op->type);
-      op->size = cs_op->size;
-      if(op->type == Operand::OP_TYPE_IMM) {
-        op->x86_value.imm = cs_op->imm;
-      } else if(op->type == Operand::OP_TYPE_REG) {
-        op->x86_value.reg = cs_op->reg;
-        if(cflow) ins->flags |= Instruction::INS_FLAG_INDIRECT;
-      } else if(op->type == Operand::OP_TYPE_FP) {
-        op->x86_value.fp = cs_op->fp;
-      } else if(op->type == Operand::OP_TYPE_MEM) {
-        op->x86_value.mem.segment = cs_op->mem.segment;
-        op->x86_value.mem.base    = cs_op->mem.base;
-        op->x86_value.mem.index   = cs_op->mem.index;
-        op->x86_value.mem.scale   = cs_op->mem.scale;
-        op->x86_value.mem.disp    = cs_op->mem.disp;
-        if(cflow) ins->flags |= Instruction::INS_FLAG_INDIRECT;
+    for(i = 0; i < cs_ins.detail.x86.op_count; i++) {
+      cs_op = &cs_ins.detail.x86.operands[i];
+      ins.operands.push_back(Operand());
+      op = &ins.operands.back();
+      op.type = cs_to_nucleus_op_type(cs_op.type);
+      op.size = cs_op.size;
+      if(op.type == Operand::OP_TYPE_IMM) {
+        op.x86_value.imm = cs_op.imm;
+      } else if(op.type == Operand::OP_TYPE_REG) {
+        op.x86_value.reg = cs_op.reg;
+        if(cflow) ins.flags |= Instruction::INS_FLAG_INDIRECT;
+      } else if(op.type == Operand::OP_TYPE_FP) {
+        op.x86_value.fp = cs_op.fp;
+      } else if(op.type == Operand::OP_TYPE_MEM) {
+        op.x86_value.mem.segment = cs_op.mem.segment;
+        op.x86_value.mem.base    = cs_op.mem.base;
+        op.x86_value.mem.index   = cs_op.mem.index;
+        op.x86_value.mem.scale   = cs_op.mem.scale;
+        op.x86_value.mem.disp    = cs_op.mem.disp;
+        if(cflow) ins.flags |= Instruction::INS_FLAG_INDIRECT;
       }
     }
 
-    for(i = 0; i < cs_ins->detail->groups_count; i++) {
-      if(is_cs_cflow_group(cs_ins->detail->groups[i])) {
-        for(j = 0; j < cs_ins->detail->x86.op_count; j++) {
-          cs_op = &cs_ins->detail->x86.operands[j];
-          if(cs_op->type == X86_OP_IMM) {
-            ins->target = cs_op->imm;
+    for(i = 0; i < cs_ins.detail.groups_count; i++) {
+      if(is_cs_cflow_group(cs_ins.detail.groups[i])) {
+        for(j = 0; j < cs_ins.detail.x86.op_count; j++) {
+          cs_op = &cs_ins.detail.x86.operands[j];
+          if(cs_op.type == X86_OP_IMM) {
+            ins.target = cs_op.imm;
           }
         }
       }
@@ -565,8 +589,8 @@ nucleus_disasm_bb_x86(Binary *bin, DisasmSection *dis, BB *bb)
   }
 
   if(!ndisassembled) {
-    bb->invalid = 1;
-    bb->end += 1; /* ensure forward progress */
+    bb.invalid = 1;
+    bb.end += 1; /* ensure forward progress */
   }
 
   ret = ndisassembled;
@@ -589,39 +613,39 @@ cleanup:
 static int
 nucleus_disasm_bb(Binary *bin, DisasmSection *dis, BB *bb)
 {
-  switch(bin->arch) {
+  switch(bin.arch) {
   case Binary::ARCH_X86:
     return nucleus_disasm_bb_x86(bin, dis, bb);
   default:
-    print_err("disassembly for architecture %s is not supported", bin->arch_str.c_str());
+    print_err("disassembly for architecture %s is not supported", bin.arch_str.c_str());
     return -1;
   }
 }
 
 
 static int
-nucleus_disasm_section(Binary *bin, DisasmSection *dis)
+nucleus_disasm_section(Binary bin, DisasmSection dis)
 {
   int ret;
-  unsigned i, n;
-  uint64_t vma;
+  uint i, n;
+  ulong vma;
   double s;
-  BB *mutants;
-  std::queue<BB*> Q;
+  BB mutants;
+  Queue<BB> Q;
 
-  mutants = NULL;
+  mutants = null;
 
-  if((dis->section->type != Section::SEC_TYPE_CODE) && options.only_code_sections) {
-    print_warn("skipping non-code section '%s'", dis->section->name.c_str());
+  if((dis.section.type != Section.SectionType.SEC_TYPE_CODE) && options.only_code_sections) {
+    print_warn("skipping non-code section '{0}'", dis.section.name);
     return 0;
   }
 
-  verbose(2, "disassembling section '%s'", dis->section->name.c_str());
+  verbose(2, "disassembling section '%s'", dis.section.name);
 
-  Q.push(NULL);
+  Q.Enqueue(null);
   while(!Q.empty()) {
-    n = bb_mutate(dis, Q.front(), &mutants);
-    Q.pop();
+    n = bb_mutate(dis, Q.Peek(), out mutants);
+    Q.Dequeue();
     for(i = 0; i < n; i++) {
       if(nucleus_disasm_bb(bin, dis, &mutants[i]) < 0) {
         goto fail;
@@ -635,15 +659,15 @@ nucleus_disasm_section(Binary *bin, DisasmSection *dis)
     }
     for(i = 0; i < n; i++) {
       if(mutants[i].alive) {
-        dis->addrmap.add_addr_flag(mutants[i].start, AddressMap::DISASM_REGION_BB_START);
-        for(auto &ins: mutants[i].insns) {
-          dis->addrmap.add_addr_flag(ins.start, AddressMap::DISASM_REGION_INS_START);
+        dis.addrmap.add_addr_flag(mutants[i].start, AddressMap::DISASM_REGION_BB_START);
+        foreach (var ins in  mutants[i].insns) {
+          dis.addrmap.add_addr_flag(ins.start, AddressMap::DISASM_REGION_INS_START);
         }
         for(vma = mutants[i].start; vma < mutants[i].end; vma++) {
-          dis->addrmap.add_addr_flag(vma, AddressMap::DISASM_REGION_CODE);
+          dis.addrmap.add_addr_flag(vma, AddressMap::DISASM_REGION_CODE);
         }
-        dis->BBs.push_back(BB(mutants[i]));
-        Q.push(&dis->BBs.back());
+        dis.BBs.push_back(BB(mutants[i]));
+        Q.push(&dis.BBs.back());
       } 
     }
   }
@@ -671,7 +695,7 @@ nucleus_disasm(Binary *bin, std::list<DisasmSection> *disasm)
     goto fail;
   }
 
-  for(auto &dis: (*disasm)) {
+  foreach (var dis in  (*disasm)) {
     if(nucleus_disasm_section(bin, &dis) < 0) {
       goto fail;
     }

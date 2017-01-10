@@ -22,7 +22,7 @@ public:
   Edge(Edge::EdgeType type_, BB *src_, BB *dst_) : type(type_), src(src_), dst(dst_), is_switch(false), jmptab(0), offset(0) {}
   Edge(Edge::EdgeType type_, BB *src_, BB *dst_, bool is_switch_, uint64_t jmptab_, unsigned offset_) : type(type_), src(src_), dst(dst_), is_switch(is_switch_), jmptab(jmptab_), offset(offset_) {}
 
-  std::string type2str ();
+  string type2str ();
 
   EdgeType  type;
   BB       *src;

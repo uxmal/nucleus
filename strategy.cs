@@ -84,7 +84,7 @@ bb_queue_recursive(DisasmSection *dis, BB *parent, BB **mutants, unsigned n, con
 {
   uint64_t target;
 
-  for(auto &ins: parent->insns) {
+  foreach (var ins in  parent->insns) {
     target = ins.target;
     if(target && dis->section->contains(target)
        && !(dis->addrmap.addr_type(target) & AddressMap::DISASM_REGION_BB_START)) {
@@ -212,7 +212,7 @@ int
 load_bb_strategy_functions()
 {
   int i;
-  std::string func;
+  string func;
 
   func = options.strategy_function.name;
   i = get_strategy_function_idx();

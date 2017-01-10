@@ -8,7 +8,7 @@
 
 
 int
-export_bin2ida(std::string &fname, Binary *bin, std::list<DisasmSection> *disasm, CFG *cfg)
+export_bin2ida(string &fname, Binary *bin, std::list<DisasmSection> *disasm, CFG *cfg)
 {
   FILE *f;
   uint64_t entry;
@@ -33,7 +33,7 @@ export_bin2ida(std::string &fname, Binary *bin, std::list<DisasmSection> *disasm
   fprintf(f, "def mark_functions():\n");
   fprintf(f, "    functions = [\n");
   i = 0;
-  for(auto &func: cfg->functions) {
+  foreach (var func in  cfg->functions) {
     if(func.entry.empty()) continue;
     entry = func.entry.front()->start;
     if(!(i % 5)) fprintf(f, "        ");
@@ -61,7 +61,7 @@ export_bin2ida(std::string &fname, Binary *bin, std::list<DisasmSection> *disasm
 
 
 int
-export_cfg2dot(std::string &fname, CFG *cfg)
+export_cfg2dot(string &fname, CFG *cfg)
 {
   FILE *f;
   BB *bb;
@@ -73,9 +73,9 @@ export_cfg2dot(std::string &fname, CFG *cfg)
   }
 
   fprintf(f, "digraph G {\n\n");
-  for(auto &kv : cfg->start2bb) {
+  foreach (var kv  in  cfg->start2bb) {
     bb = kv.second;
-    for(auto &e : bb->targets) {
+    foreach (var e  in  bb->targets) {
       fprintf(f, "bb_%jx -> bb_%jx [ label=\"%s\" ];\n", e.src->start, e.dst->start, e.type2str().c_str());
     }
   }

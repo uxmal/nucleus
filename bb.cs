@@ -1,42 +1,41 @@
-#include <stdio.h>
+using System.IO;
 
-#include "bb.h"
-#include "insn.h"
-
-
-void
-BB::print(FILE *out)
+namespace Nucleus
 {
-  fprintf(out, "BB @0x%016jx (score %.10f) %s%s%s%s {\n", 
+    public partial class BB
+    { 
+        public void print(TextWriter @out)
+{
+  @out.WriteLine( "BB @0x{0:X16} (score {1,10} {2}{3}{4}{5}{6} {{", 
           start, score, invalid ? "i" : "-", privileged ? "p" : "-", 
           addrtaken ? "a" : "-", padding ? "n" : "-");
   if(invalid) {
-    fprintf(out, "  0x%016jx  (bad)", start);
+    @out.Write( "  0x%016jx  (bad)", start);
   } else {
-    for(auto &ins: insns) {
-      ins.print(out);
+    foreach (var ins in  insns) {
+      ins.print(@out);
     }
   }
   if(!ancestors.empty()) {
-    fprintf(out, "--A ancestors:\n");
-    for(auto &e: ancestors) {
-      fprintf(out, "--A 0x%016jx (%s)\n", e.src->insns.back().start, e.type2str().c_str());
+    @out.Write( "--A ancestors:\n");
+    foreach (var e in  ancestors) {
+      @out.Write( "--A 0x%016jx (%s)\n", e.src->insns.back().start, e.type2str().c_str());
     }
   }
   if(!targets.empty()) {
-    fprintf(out, "--T targets:\n");
-    for(auto &e: targets) {
-      fprintf(out, "--T 0x%016jx (%s)\n", e.dst->start+e.offset, e.type2str().c_str());
+    @out.Write( "--T targets:\n");
+    foreach (var e in  targets) {
+      @out.Write( "--T 0x%016jx (%s)\n", e.dst->start+e.offset, e.type2str().c_str());
     }
   }
-  fprintf(out, "}\n\n");
+  @out.Write( "}\n\n");
 }
 
 
 bool
 BB::is_called()
 {
-  for(auto &e: ancestors) {
+  foreach (var e in  ancestors) {
     if((e.type == Edge::EDGE_TYPE_CALL) 
        || (e.type == Edge::EDGE_TYPE_CALL_INDIRECT)) {
       return true;

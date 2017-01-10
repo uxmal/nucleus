@@ -64,8 +64,8 @@ public:
   uint8_t              addr_size;
   uint64_t             target;
   unsigned short       flags;
-  std::string          mnem;
-  std::string          op_str;
+  string          mnem;
+  string          op_str;
   std::vector<Operand> operands;
   bool                 invalid;
   bool                 privileged;

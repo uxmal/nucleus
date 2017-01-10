@@ -12,20 +12,20 @@
 /*******************************************************************************
  **                                string utils                               **
  ******************************************************************************/
-std::string
-str_realpath(std::string s)
+string
+str_realpath(string s)
 {
   char real[PATH_MAX+1];
 
   if(!realpath(s.c_str(), real)) {
     return "";
   }
-  return std::string(real);
+  return string(real);
 }
 
 
-std::string
-str_realpath_dir(std::string s)
+string
+str_realpath_dir(string s)
 {
   char real[PATH_MAX+1], *dir;
 
@@ -34,12 +34,12 @@ str_realpath_dir(std::string s)
   }
 
   dir = dirname(real);
-  return std::string(dir);
+  return string(dir);
 }
 
 
-std::string
-str_realpath_base(std::string s)
+string
+str_realpath_base(string s)
 {
   char real[PATH_MAX+1], *base;
 
@@ -48,17 +48,17 @@ str_realpath_base(std::string s)
   }
 
   base = basename(real);
-  return std::string(base);
+  return string(base);
 }
 
 
-std::string
-str_getenv(std::string env)
+string
+str_getenv(string env)
 {
   char *e;
 
   e = getenv(env.c_str());
-  return e ? std::string(e) : "";
+  return e ? string(e) : "";
 }
 
 /*******************************************************************************

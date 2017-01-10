@@ -19,7 +19,7 @@
 void
 CFG::print_functions(FILE *out)
 {
-  for(auto &f: this->functions) {
+  foreach (var f in  this->functions) {
     f.print(out);
   }
 }
@@ -28,7 +28,7 @@ CFG::print_functions(FILE *out)
 void
 CFG::print_function_summaries(FILE *out)
 {
-  for(auto &f: this->functions) {
+  foreach (var f in  this->functions) {
     f.print_summary(out);
   }
 }
@@ -40,10 +40,10 @@ CFG::analyze_addrtaken_x86()
   BB *bb, *cc;
   Operand *op_src, *op_dst;
 
-  for(auto &kv: this->start2bb) {
+  foreach (var kv in  this->start2bb) {
     bb = kv.second;
-    for(auto &ins: bb->insns) {
-      if(ins.operands.size() < 2) {
+    foreach (var ins in  bb->insns) {
+      if(ins.operands.Count < 2) {
         continue;
       }
       op_dst = &ins.operands[0];
@@ -104,14 +104,14 @@ CFG::find_switches_x86()
    *        that index a jump table like this:
    *            jmpq   *0x7a1ae8(,%rcx,8)
    */
-  for(auto &kv: this->start2bb) {
+  foreach (var kv in  this->start2bb) {
     bb = kv.second;
     jmptab_addr = 0;
     target_sec  = NULL;
     /* If this BB ends in an indirect jmp, scan the BB for what looks like
      * an instruction loading a target from a jump table */
     if(bb->insns.back().edge_type() == Edge::EDGE_TYPE_JMP_INDIRECT) {
-      if(bb->insns.back().operands.size() < 1) {
+      if(bb->insns.back().operands.Count < 1) {
         print_warn("Indirect jump has no target operand");
         continue;
       }
@@ -135,7 +135,7 @@ CFG::find_switches_x86()
         } else {
           /* This is the last instruction that loads the jump target register,
            * see if we can find a jump table address from it */
-          if(ins->operands.size() >= 2) {
+          if(ins->operands.Count >= 2) {
             op_mem = &ins->operands[1];
             if(op_mem->type == Operand::OP_TYPE_MEM) {
               jmptab_addr = (uint64_t)op_mem->x86_value.mem.disp;
@@ -150,7 +150,7 @@ CFG::find_switches_x86()
     }
 
     if(jmptab_addr) {
-      for(auto &sec: this->binary->sections) {
+      foreach (var sec in  this->binary->sections) {
         if(sec.contains(jmptab_addr)) {
           verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)", 
                      jmptab_addr, bb->insns.back().start);
@@ -187,7 +187,7 @@ CFG::find_switches_x86()
               cc = this->get_bb(case_addr, &offset);
               if(!cc) break;
               conflict_edge = NULL;
-              for(auto &e: cc->ancestors) {
+              foreach (var e in  cc->ancestors) {
                 if(e.is_switch) {
                   conflict_edge = &e;
                   break;
@@ -249,7 +249,7 @@ CFG::expand_function(Function *f, BB *bb)
    * in that case it is an entry point, and we don't want to backtrack along
    * inbound edges because that causes issues with tailcalls */
   if(!bb->is_called()) {
-    for(auto &e: bb->ancestors) {
+    foreach (var e in  bb->ancestors) {
       if((e.type == Edge::EDGE_TYPE_CALL) 
          || (e.type == Edge::EDGE_TYPE_CALL_INDIRECT)
          || (e.type == Edge::EDGE_TYPE_RET)) {
@@ -260,7 +260,7 @@ CFG::expand_function(Function *f, BB *bb)
   }
 
   /* Follow links to target blocks */
-  for(auto &e: bb->targets) {
+  foreach (var e in  bb->targets) {
     if((e.type == Edge::EDGE_TYPE_CALL) 
        || (e.type == Edge::EDGE_TYPE_CALL_INDIRECT)
        || (e.type == Edge::EDGE_TYPE_RET)) {
@@ -279,7 +279,7 @@ CFG::find_functions()
   verbose(1, "starting function analysis");
 
   /* Create function headers for all BBs that are called directly */
-  for(auto &kv: this->start2bb) {
+  foreach (var kv in  this->start2bb) {
     bb = kv.second;
     if(bb->section->is_import_table() || bb->is_padding()) {
       continue;
@@ -292,13 +292,13 @@ CFG::find_functions()
   }
 
   /* Expand functions for the directly-called header BBs */
-  for(auto &f: this->functions) {
+  foreach (var f in  this->functions) {
     expand_function(&f, NULL);
     f.find_entry();
   }
 
   /* Detect functions for remaining BBs through connected-component analysis */
-  for(auto &kv: this->start2bb) {
+  foreach (var kv in  this->start2bb) {
     bb = kv.second;
     if(bb->section->is_import_table() || bb->is_padding()) {
       continue;
@@ -320,7 +320,7 @@ CFG::find_entry()
 {
   uint64_t entry;
 
-  if(this->entry.size() > 0) {
+  if(this->entry.Count > 0) {
     /* entry point already known */
     verbose(3, "cfg entry point@0x%016jx", this->entry.front()->start);
     return;
@@ -341,13 +341,13 @@ CFG::verify_padding()
   unsigned noplen;
 
   /* Fix incorrectly identified padding blocks (they turned out to be reachable) */
-  for(auto &kv: this->start2bb) {
+  foreach (var kv in  this->start2bb) {
     bb = kv.second;
     if(bb->trap) continue;
     if(bb->padding && !bb->ancestors.empty()) {
       call_fallthrough = false;
       noplen = (bb->end - bb->start);
-      for(auto &e: bb->ancestors) {
+      foreach (var e in  bb->ancestors) {
         if((e.type == Edge::EDGE_TYPE_FALLTHROUGH) 
            && (e.src->insns.back().flags & Instruction::INS_FLAG_CALL)) {
           /* This padding block may not be truly reachable; the preceding
@@ -374,13 +374,13 @@ CFG::detect_bad_bbs()
 
   /* This improves accuracy for code with inline data (otherwise it does nothing) */
 
-  for(auto &kv: this->bad_bbs) blacklist.push_back(kv.second);
-  for(auto &kv: this->start2bb) {
+  foreach (var kv in  this->bad_bbs) blacklist.push_back(kv.second);
+  foreach (var kv in  this->start2bb) {
     if(kv.second->trap) blacklist.push_back(kv.second);
   }
 
   /* Mark BBs that may fall through to a blacklisted block as invalid */
-  for(auto bb: blacklist) {
+  foreach (var bb in  blacklist) {
     invalid = true;
     cc = bb;
     while(invalid) {
@@ -403,7 +403,7 @@ CFG::detect_bad_bbs()
   }
 
   /* Remove bad BBs from the CFG map */
-  for(auto &kv: this->bad_bbs) {
+  foreach (var kv in  this->bad_bbs) {
     bb = kv.second;
     if(this->start2bb.count(bb->start)) {
       this->start2bb.erase(bb->start);
@@ -467,7 +467,7 @@ CFG::unlink_bb(BB *bb)
   BB *cc;
   std::list<Edge>::iterator f;
 
-  for(auto &e: bb->ancestors) {
+  foreach (var e in  bb->ancestors) {
     cc = e.src;
     for(f = cc->targets.begin(); f != cc->targets.end(); ) {
       if(f->dst == bb) f = cc->targets.erase(f);
@@ -475,7 +475,7 @@ CFG::unlink_bb(BB *bb)
     }
   }
 
-  for(auto &e: bb->targets) {
+  foreach (var e in  bb->targets) {
     cc = e.dst;
     for(f = cc->ancestors.begin(); f != cc->ancestors.end(); ) {
       if(f->src == bb) f = cc->ancestors.erase(f);
@@ -515,8 +515,8 @@ CFG::make_cfg(Binary *bin, std::list<DisasmSection> *disasm)
 
   this->binary = bin;
 
-  for(auto &dis: (*disasm)) {
-    for(auto &bb: dis.BBs) {
+  foreach (var dis in  (*disasm)) {
+    foreach (var bb in  dis.BBs) {
       if(bb.invalid) {
         this->bad_bbs[bb.start] = &bb;
         continue;
@@ -532,8 +532,8 @@ CFG::make_cfg(Binary *bin, std::list<DisasmSection> *disasm)
   }
 
   /* Link basic blocks by direct and fallthrough edges */
-  for(auto &dis: (*disasm)) {
-    for(auto &bb: dis.BBs) {
+  foreach (var dis in  (*disasm)) {
+    foreach (var bb in  dis.BBs) {
       flags = bb.insns.back().flags;
       if((flags & Instruction::INS_FLAG_CALL) || (flags & Instruction::INS_FLAG_JMP)) {
         if(!(flags & Instruction::INS_FLAG_INDIRECT)) {

@@ -1,16 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <getopt.h>
-#include <string.h>
+namespace Nucleus
+{
 
-#include "nucleus.h"
-#include "util.h"
-#include "strategy.h"
-#include "loader.h"
-#include "options.h"
-
-
-struct options options;
+    public partial class Nucleus
+    { 
+        public static options options = new options();
 
 
 void
@@ -66,7 +59,7 @@ parse_options(int argc, char *argv[])
   char optstr[] = "vwhd:t:a:fb:Dpg:i:e:";
   extern const char *binary_types_descr[][2];
   extern const char *binary_arch_descr[][2];
-  std::string s;
+  string s;
 
   options.verbosity           = 0;
   options.warnings            = 1;
@@ -74,9 +67,9 @@ parse_options(int argc, char *argv[])
   options.allow_privileged    = 0;
   options.summarize_functions = 0;
 
-  options.nucleuspath.real = str_realpath(std::string(argv[0]));
-  options.nucleuspath.dir  = str_realpath_dir(std::string(argv[0]));
-  options.nucleuspath.base = str_realpath_base(std::string(argv[0]));
+  options.nucleuspath.real = str_realpath(string(argv[0]));
+  options.nucleuspath.dir  = str_realpath_dir(string(argv[0]));
+  options.nucleuspath.base = str_realpath_base(string(argv[0]));
 
   options.binary.type     = Binary::BIN_TYPE_AUTO;
   options.binary.arch     = Binary::ARCH_NONE;
@@ -98,7 +91,7 @@ parse_options(int argc, char *argv[])
       break;
 
     case 'e':
-      options.binary.filename = std::string(optarg);
+      options.binary.filename = string(optarg);
       break;
 
     case 't':
@@ -116,7 +109,7 @@ parse_options(int argc, char *argv[])
       break;
 
     case 'a':
-      s = std::string(optarg);
+      s = string(optarg);
       s = s.substr(0, s.find('-'));
       for(i = 0; binary_arch_descr[i][0]; i++) {
         if(!strcmp(s.c_str(), binary_arch_descr[i][0])) {
@@ -124,8 +117,8 @@ parse_options(int argc, char *argv[])
           break;
         }
       }
-      s = std::string(optarg);
-      if(s.find('-') != std::string::npos) {
+      s = string(optarg);
+      if(s.find('-') != string::npos) {
         s = s.substr(s.find('-')+1);
       }
       options.binary.bits = strtoul(s.c_str(), NULL, 0);
@@ -157,15 +150,15 @@ parse_options(int argc, char *argv[])
       break;
 
     case 'g':
-      options.exports.dot = std::string(optarg);
+      options.exports.dot = string(optarg);
       break;
 
     case 'i':
-      options.exports.ida = std::string(optarg);
+      options.exports.ida = string(optarg);
       break;
 
     case 'd':
-      options.strategy_function.name = std::string(optarg);
+      options.strategy_function.name = string(optarg);
       break;
 
     case 'h':

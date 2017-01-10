@@ -5,10 +5,10 @@
 
 #include <string>
 
-std::string str_realpath      (std::string s);
-std::string str_realpath_dir  (std::string s);
-std::string str_realpath_base (std::string s);
-std::string str_getenv        (std::string env);
+string str_realpath      (string s);
+string str_realpath_dir  (string s);
+string str_realpath_base (string s);
+string str_getenv        (string env);
 
 uint64_t rand64          ();
 uint64_t xorshift128plus ();
