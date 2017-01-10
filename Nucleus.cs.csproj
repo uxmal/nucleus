@@ -40,6 +40,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="bb.cs" />
     <Compile Include="bb.h.cs" />
     <Compile Include="cfg.cs" />
@@ -48,10 +49,7 @@
     <Compile Include="disasm.cs" />
     <Compile Include="edge.cs" />
     <Compile Include="edge.h.cs" />
-    <Compile Include="exception.cs" />
-    <Compile Include="exception.h.cs" />
     <Compile Include="export.cs" />
-    <Compile Include="export.h.cs" />
     <Compile Include="function.cs" />
     <Compile Include="function.h.cs" />
     <Compile Include="insn.cs" />
@@ -59,12 +57,10 @@
     <Compile Include="loader.cs" />
     <Compile Include="loader.h.cs" />
     <Compile Include="log.cs" />
-    <Compile Include="log.h.cs" />
     <Compile Include="nucleus.cs" />
     <Compile Include="nucleus.h.cs" />
     <Compile Include="options.cs" />
     <Compile Include="options.h.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="strategy.cs" />
     <Compile Include="strategy.h.cs" />
     <Compile Include="util.cs" />

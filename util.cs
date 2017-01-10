@@ -12,12 +12,14 @@
 /*******************************************************************************
  **                                string utils                               **
  ******************************************************************************/
+
+ /*
 string
 str_realpath(string s)
 {
   char real[PATH_MAX+1];
 
-  if(!realpath(s.c_str(), real)) {
+  if(!realpath(s, real)) {
     return "";
   }
   return string(real);
@@ -29,7 +31,7 @@ str_realpath_dir(string s)
 {
   char real[PATH_MAX+1], *dir;
 
-  if(!realpath(s.c_str(), real)) {
+  if(!realpath(s, real)) {
     return "";
   }
 
@@ -43,7 +45,7 @@ str_realpath_base(string s)
 {
   char real[PATH_MAX+1], *base;
 
-  if(!realpath(s.c_str(), real)) {
+  if(!realpath(s, real)) {
     return "";
   }
 
@@ -57,13 +59,17 @@ str_getenv(string env)
 {
   char *e;
 
-  e = getenv(env.c_str());
+  e = getenv(env);
   return e ? string(e) : "";
 }
+
+*/
 
 /*******************************************************************************
  **                               rand functions                              **
  ******************************************************************************/
+
+ /*
 uint64_t
 rand64()
 {
@@ -105,3 +111,4 @@ fast_rand64()
   return xorshift128plus();
 }
 
+*/

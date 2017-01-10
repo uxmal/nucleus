@@ -5,7 +5,7 @@ namespace Nucleus
         public bool warnings;
         public bool only_code_sections;
         public int allow_privileged;
-        public int summarize_functions;
+        public bool summarize_functions;
 
         public struct path_options {
             string real;
@@ -18,7 +18,7 @@ namespace Nucleus
             public string ida;
             public string dot;
         }
-        public path_options exports;
+        public export_options exports;
 
         public struct binary_options {
             public string filename;
@@ -29,7 +29,12 @@ namespace Nucleus
         }
         public binary_options binary;
 
-        public Strategy stategy_function;
+        public struct strategy_options
+        {
+            public string name;
+            public Strategy function;
+        }
+        public strategy_options strategy;
     }
 
     //static int parse_options(string[] args);

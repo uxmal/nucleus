@@ -7,14 +7,14 @@ namespace Nucleus
 
 
     public delegate double bb_score_function_t(DisasmSection sec, BB bb);
-    public delegate uint bb_mutate_function_t(DisasmSection sec, BB bb, out BB[] mutants);
+    public delegate uint bb_mutate_function_t(DisasmSection sec, BB bb, BB[] mutants);
     public delegate int bb_select_function_t(DisasmSection sec, BB[] bb, uint n);
 
     public abstract class Strategy
     {
         public abstract double score_function(DisasmSection sec, BB bb);
-        public abstract uint mutate_function(DisasmSection sec, BB bb, out BB[] mutants);
-        public abstract int select_function(DisasmSection sec, BB[] bb, uint n);
+        public abstract uint mutate_function(DisasmSection sec, BB bb, BB[] mutants);
+        public abstract int select_function(DisasmSection sec, BB[] bb, int n);
     }
 
     partial class Nucleus
@@ -22,275 +22,253 @@ namespace Nucleus
         /*******************************************************************************
          **                        strategy function: linear                          **
          ******************************************************************************/
-        double
-        bb_score_linear(DisasmSection dis, BB bb)
+        public class linear_strategy : Strategy
         {
-            bb.score = 1.0;
-            return bb.score;
-        }
-
-
-        uint
-        bb_mutate_linear(DisasmSection dis, BB parent, ref BB[] mutants)
-        {
-            if (parent == null)
+            public override double score_function(DisasmSection sec, BB bb)
             {
-                try
+                bb.score = 1.0;
+                return bb.score;
+            }
+
+
+            public override uint mutate_function(DisasmSection dis, BB parent, BB[] mutants)
+            {
+                if (parent == null)
                 {
-                    mutants = new BB[1];
-                    mutants[0] = new BB();
+                    try
+                    {
+                        mutants = new BB[1];
+                        mutants[0] = new BB();
+                    }
+                    catch (OutOfMemoryException)
+                    {
+                        Log.print_err("out of memory");
+                        return 0;
+                    }
+                    /* start disassembling at the start of the section */
+                    mutants[0].set(dis.section.vma, 0);
                 }
-                catch (OutOfMemoryException)
+                else if (dis.section.contains(parent.end))
                 {
-                    print_err("out of memory");
+                    /* next BB is directly after the current BB */
+                    mutants[0].set(parent.end, 0);
+                }
+                else
+                {
+                    mutants[0].set(0, 0);
                     return 0;
                 }
-                /* start disassembling at the start of the section */
-                mutants[0].set(dis.section.vma, 0);
+
+                return 1;
             }
-            else if (dis.section.contains(parent.end))
+
+
+            public override int select_function(DisasmSection sec, BB[] mutants, int len)
             {
-                /* next BB is directly after the current BB */
-                mutants[0].set(parent.end, 0);
+                int i;
+
+                for (i = 0; i < len; i++)
+                {
+                    mutants[i].alive = true;
+                }
+
+                return len;
             }
-            else
-            {
-                mutants[0].set(0, 0);
-                return 0;
-            }
-
-            return 1;
-        }
-
-
-        int
-        bb_select_linear(DisasmSection dis, BB[] mutants, uint len)
-        {
-            uint i;
-
-            for (i = 0; i < len; i++)
-            {
-                mutants[i].alive = true;
-            }
-
-            return len;
         }
         /*******************************************************************************
          **                       strategy function: recursive                        **
          ******************************************************************************/
-        double
-        bb_score_recursive(DisasmSection dis, BB bb)
+        public class recursive_strategy : Strategy
         {
-            bb.score = 1.0;
-            return bb.score;
-        }
-
-
-        uint
-        bb_queue_recursive(DisasmSection dis, BB parent, BB[] mutants, uint n, uint max_mutants)
-        {
-            ulong target;
-
-            foreach (var ins in parent.insns)
+            public override double score_function(DisasmSection sec, BB bb)
             {
-                target = ins.target;
-                if (target && dis.section.contains(target)
-                   && (dis.addrmap.addr_type(target) & AddressMap.DisasmRegion.DISASM_REGION_BB_START) == 0)
-                {
-                    /* recursively queue the target BB for disassembly */
-                    mutants[n++].set(target, 0);
-                }
-                if ((n + 1) == max_mutants) break;
+                bb.score = 1.0;
+                return bb.score;
             }
-            var ins = parent.insns.Last();
-            if ((ins.flags & Instruction.InstructionFlags.INS_FLAG_COND) != 0
-               || (ins.flags & Instruction.InstructionFlags.INS_FLAG_CALL) != 0)
+
+
+
+            uint
+            bb_queue_recursive(DisasmSection dis, BB parent, BB[] mutants, uint n, uint max_mutants)
             {
-                /* queue fall-through block of conditional jump or call */
-                if (((n + 1) < max_mutants) && dis.section.contains(parent.end)
-                   && !(dis.addrmap.addr_type(parent.end) & AddressMap.DisasmRegion.DISASM_REGION_BB_START))
+                foreach (var instr in parent.insns)
                 {
-                    mutants[n++].set(parent.end, 0);
-                }
-            }
-            return n;
-        }
-
-
-        uint
-        bb_mutate_recursive(DisasmSection dis, BB parent, ref BB[] mutants)
-        {
-            uint i, n;
-            const uint max_mutants = 4096;
-            List<Symbol> symbols;
-
-            /* XXX: This strategy may yield overlapping BBs. Also, the current
-             * implementation is very basic and yields low coverage. For normal
-             * use the linear strategy is recommended. */
-
-            n = 0;
-            if (parent == null)
-            {
-                try
-                {
-                    mutants = new BB[max_mutants];
-                }
-                catch (OutOfMemoryException)
-                {
-                    print_err("out of memory");
-                    return 0;
-                }
-
-                /* first guess for BBs are the entry point and function symbols if available, 
-                 * or the section start address otherwise */
-                if (dis.section.contains(dis.section.binary.entry))
-                {
-                    mutants[n++].set(dis.section.binary.entry, 0);
-                }
-                symbols = dis.section.binary.symbols;
-                for (i = 0; i < symbols.Count; i++)
-                {
-                    if ((symbols[i].type & Symbol.SymbolType.SYM_TYPE_FUNC) && ((n + 1) < max_mutants)
-                        && dis.section.contains(symbols.at(i).addr))
+                    var target = instr.target;
+                    if (target != 0 && dis.section.contains(target)
+                       && (dis.addrmap.addr_type(target) & AddressMap.DisasmRegion.DISASM_REGION_BB_START) == 0)
                     {
-                        mutants[n++].set(symbols[i].addr, 0);
+                        /* recursively queue the target BB for disassembly */
+                        mutants[n++].set(target, 0);
+                    }
+                    if ((n + 1) == max_mutants) break;
+                }
+                var ins = parent.insns.Last();
+                if ((ins.flags & Instruction.InstructionFlags.INS_FLAG_COND) != 0
+                   || (ins.flags & Instruction.InstructionFlags.INS_FLAG_CALL) != 0)
+                {
+                    /* queue fall-through block of conditional jump or call */
+                    if (((n + 1) < max_mutants) && dis.section.contains(parent.end)
+                       && (dis.addrmap.addr_type(parent.end) & AddressMap.DisasmRegion.DISASM_REGION_BB_START) == 0)
+                    {
+                        mutants[n++].set(parent.end, 0);
                     }
                 }
-                if (n == 0)
+                return n;
+            }
+
+            public override uint mutate_function(DisasmSection dis, BB parent, BB[] mutants)
+            {
+                int i;
+                const uint max_mutants = 4096;
+                List<Symbol> symbols;
+
+                /* XXX: This strategy may yield overlapping BBs. Also, the current
+                 * implementation is very basic and yields low coverage. For normal
+                 * use the linear strategy is recommended. */
+
+                uint n = 0;
+                if (parent == null)
                 {
-                    mutants[n++].set(dis.section.vma, 0);
+                    try
+                    {
+                        mutants = new BB[max_mutants];
+                    }
+                    catch (OutOfMemoryException)
+                    {
+                        Log.print_err("out of memory");
+                        return 0;
+                    }
+
+                    /* first guess for BBs are the entry point and function symbols if available, 
+                     * or the section start address otherwise */
+                    if (dis.section.contains(dis.section.binary.entry))
+                    {
+                        mutants[n++].set(dis.section.binary.entry, 0);
+                    }
+                    symbols = dis.section.binary.symbols;
+                    for (i = 0; i < symbols.Count; i++)
+                    {
+                        if ((symbols[i].type & Symbol.SymbolType.SYM_TYPE_FUNC) != 0 && ((n + 1) < max_mutants)
+                            && dis.section.contains(symbols[i].addr))
+                        {
+                            mutants[n++].set(symbols[i].addr, 0);
+                        }
+                    }
+                    if (n == 0)
+                    {
+                        mutants[n++].set(dis.section.vma, 0);
+                    }
+
+                    return n;
+                }
+                else
+                {
+                    n = bb_queue_recursive(dis, parent, mutants, n, max_mutants);
+                    if (n == 0)
+                    {
+                        /* no recursive targets found, resort to heuristics */
+                        if (dis.section.contains(parent.end) && (dis.addrmap.addr_type(parent.end) & AddressMap.DisasmRegion.DISASM_REGION_BB_START) == 0)
+                        {
+                            /* guess next BB directly after parent */
+                            mutants[n++].set(parent.end, 0);
+                        }
+                    }
                 }
 
                 return n;
             }
-            else
+
+
+            public override int select_function(DisasmSection dis, BB[] mutants, int len)
             {
-                n = bb_queue_recursive(dis, parent, mutants, n, max_mutants);
-                if (n == 0)
+                uint i;
+
+                for (i = 0; i < len; i++)
                 {
-                    /* no recursive targets found, resort to heuristics */
-                    if (dis.section.contains(parent.end) && !(dis.addrmap.addr_type(parent.end) & AddressMap.DisasmRegion.DISASM_REGION_BB_START))
-                    {
-                        /* guess next BB directly after parent */
-                        mutants[n++].set(parent.end, 0);
-                    }
+                    mutants[i].alive = true;
                 }
-            }
 
-            return n;
+                return len;
+            }
         }
 
-
-        int
-        bb_select_recursive(DisasmSection dis, BB[] mutants, int len)
-        {
-            uint i;
-
-            for (i = 0; i < len; i++)
-            {
-                mutants[i].alive = true;
-            }
-
-            return len;
-        }
         /*******************************************************************************
          **                            dispatch functions                             **
          ******************************************************************************/
-        string[] strategy_functions = {
-  "linear",
-  "recursive",
-  null
-};
+        static Tuple<string, Type>[] strategy_functions = {
+            Tuple.Create("linear", typeof(linear_strategy)),
+            Tuple.Create("recursive", typeof(recursive_strategy))
+        };
 
         string[] strategy_functions_doc = {
   /* linear     */ "Linear disassembly",
   /* recursive  */ "Recursive disassembly (incomplete implementation, not recommended)",
-  null
 };
 
-        Strategy[] bb_strategy_functions = {
+        static Strategy[] bb_strategy_functions = {
   //{ (void*)bb_score_linear    , (void*)bb_mutate_linear    , (void*)bb_select_linear     },
   //{ (void*)bb_score_recursive , (void*)bb_mutate_recursive , (void*)bb_select_recursive  },
   //{ NULL, NULL, NULL }
 };
 
 
-        static int
-        get_strategy_function_idx()
+        static Type
+        get_strategy_function_type()
         {
-            int i;
-
-            i = 0;
-            while (strategy_functions[i])
+            foreach (var sf in strategy_functions)
             {
-                if (options.strategy_function.name.compare(strategy_functions[i]) == 0)
+                if (options.strategy.name == sf.Item1)
                 {
-                    return i;
+                    return sf.Item2;
                 }
-                i++;
             }
-
-            return -1;
+            return null;
         }
 
-
-        int
+        static int
         load_bb_strategy_functions()
         {
-            int i;
-            string func;
-
-            //func = options.strategy_function.name;
-            i = get_strategy_function_idx();
-            if (i >= 0)
+            var type = get_strategy_function_type();
+            if (type != null)
             {
-                //options.strategy_function.score_function  = (bb_score_function_t)bb_strategy_functions[i][0];
-                //options.strategy_function.mutate_function = (bb_mutate_function_t)bb_strategy_functions[i][1];
-                //options.strategy_function.select_function = (bb_select_function_t)bb_strategy_functions[i][2];
+                options.strategy.function = (Strategy)Activator.CreateInstance(type);
+                return 0;
             }
             else
             {
-                goto fail;
+            Log.print_err("unknown strategy function '{0}'", options.strategy.name);
+                return -1;
             }
-
-            return 0;
-
-            fail:
-            print_err("unknown strategy function '%s'", func);
-            return -1;
         }
 
-        double
-        bb_score(DisasmSection dis, BB bb)
+        static double bb_score(DisasmSection dis, BB bb)
         {
-            if (!options.strategy_function.score_function)
+            if (options.strategy.function == null)
             {
                 if (load_bb_strategy_functions() < 0) return -1.0;
             }
 
-            return options.strategy_function.score_function(dis, bb);
+            return options.strategy.function.score_function(dis, bb);
         }
 
 
-        unsigned
-        bb_mutate(DisasmSection dis, BB parent, BB[] mutants)
+        static uint bb_mutate(DisasmSection dis, BB parent, BB[] mutants)
         {
-            if (!options.strategy_function.mutate_function)
+            if (options.strategy.function == null)
             {
                 if (load_bb_strategy_functions() < 0) return 0;
             }
 
-            return options.strategy_function.mutate_function(dis, parent, mutants);
+            return options.strategy.function.mutate_function(dis, parent, mutants);
         }
 
-        int
-        bb_select(DisasmSection dis, BB[] mutants, int len)
+        static int bb_select(DisasmSection dis, BB[] mutants, int len)
         {
-            if (!options.strategy_function.select_function)
+            if (options.strategy.function.select_function == null)
             {
                 if (load_bb_strategy_functions() < 0) return 0;
             }
-            return options.strategy_function.select_function(dis, mutants, len);
+            return options.strategy.function.select_function(dis, mutants, len);
         }
     }
 }

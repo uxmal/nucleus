@@ -74,7 +74,7 @@ namespace Nucleus
 
     public partial class AddressMap
     {
-        void
+        public void
         insert(ulong addr)
         {
             if (!contains(addr)) {
@@ -117,7 +117,7 @@ namespace Nucleus
         }
 
 
-        void
+        public void
         add_addr_flag(ulong addr, DisasmRegion flag)
         {
             Debug.Assert(contains(addr));
@@ -189,11 +189,11 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
                 disasm.Add(dis);
 
                 dis.section = sec;
-                for (vma = sec.vma; vma < (sec.vma + sec.size); vma++) {
+                for (var vma = sec.vma; vma < (sec.vma + sec.size); vma++) {
                     dis.addrmap.insert(vma);
                 }
             }
-            verbose(1, "disassembler initialized");
+            Log.verbose(1, "disassembler initialized");
 
             return 0;
         }
@@ -202,7 +202,7 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
         static int
         fini_disasm(Binary bin, List<DisasmSection> disasm)
         {
-            verbose(1, "disassembly complete");
+            Log.verbose(1, "disassembly complete");
 
             return 0;
         }
@@ -212,11 +212,11 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
         is_cs_nop_ins(cs_insn ins)
         {
             switch (ins.id) {
-            case X86_INS_NOP:
-            case X86_INS_FNOP:
-                return 1;
+            case x86_insn.X86_INS_NOP:
+            case x86_insn.X86_INS_FNOP:
+                return true;;
             default:
-                return 0;
+                return false;
             }
         }
 
@@ -231,50 +231,50 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
 
             x86 = ins.detail.x86;
             switch (ins.id) {
-            case X86_INS_MOV:
+            case x86_insn.X86_INS_MOV:
                 /* mov reg,reg */
                 if ((x86.op_count == 2)
-                   && (x86.operands[0].type == X86_OP_REG)
-                   && (x86.operands[1].type == X86_OP_REG)
+                   && (x86.operands[0].type == x86_op_type.X86_OP_REG)
+                   && (x86.operands[1].type == x86_op_type.X86_OP_REG)
                    && (x86.operands[0].reg == x86.operands[1].reg)) {
-                    return 1;
+                    return true;;
                 }
-                return 0;
-            case X86_INS_XCHG:
+                return false;
+            case x86_insn.X86_INS_XCHG:
                 /* xchg reg,reg */
                 if ((x86.op_count == 2)
-                   && (x86.operands[0].type == X86_OP_REG)
-                   && (x86.operands[1].type == X86_OP_REG)
+                   && (x86.operands[0].type == x86_op_type.X86_OP_REG)
+                   && (x86.operands[1].type == x86_op_type.X86_OP_REG)
                    && (x86.operands[0].reg == x86.operands[1].reg)) {
-                    return 1;
+                    return true;;
                 }
-                return 0;
-            case X86_INS_LEA:
+                return false;
+            case x86_insn.X86_INS_LEA:
                 /* lea    reg,[reg + 0x0] */
                 if ((x86.op_count == 2)
-                   && (x86.operands[0].type == X86_OP_REG)
-                   && (x86.operands[1].type == X86_OP_MEM)
-                   && (x86.operands[1].mem.segment == X86_REG_INVALID)
-                   && (x86.operands[1].mem.base == x86.operands[0].reg)
-       && (x86.operands[1].mem.index == X86_REG_INVALID)
+                   && (x86.operands[0].type == x86_op_type.X86_OP_REG)
+                   && (x86.operands[1].type == x86_op_type.X86_OP_MEM)
+                   && (x86.operands[1].mem.segment == x86_reg.X86_REG_INVALID)
+                   && (x86.operands[1].mem.@base == x86.operands[0].reg)
+       && (x86.operands[1].mem.index == x86_reg.X86_REG_INVALID)
        /* mem.scale is irrelevant since index is not used */
        && (x86.operands[1].mem.disp == 0)) {
-                    return 1;
+                    return true;;
                 }
                 /* lea    reg,[reg + eiz*x + 0x0] */
                 if ((x86.op_count == 2)
-                   && (x86.operands[0].type == X86_OP_REG)
-                   && (x86.operands[1].type == X86_OP_MEM)
-                   && (x86.operands[1].mem.segment == X86_REG_INVALID)
-                   && (x86.operands[1].mem.base == x86.operands[0].reg)
-       && (x86.operands[1].mem.index == X86_REG_EIZ)
+                   && (x86.operands[0].type == x86_op_type.X86_OP_REG)
+                   && (x86.operands[1].type == x86_op_type.X86_OP_MEM)
+                   && (x86.operands[1].mem.segment == x86_reg.X86_REG_INVALID)
+                   && (x86.operands[1].mem.@base == x86.operands[0].reg)
+       && (x86.operands[1].mem.index == x86_reg.X86_REG_EIZ)
        /* mem.scale is irrelevant since index is the zero-register */
        && (x86.operands[1].mem.disp == 0)) {
-                    return 1;
+                    return true;;
                 }
-                return 0;
+                return false;
             default:
-                return 0;
+                return false;
             }
         }
 
@@ -283,8 +283,8 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
         is_cs_trap_ins(cs_insn ins)
         {
             switch (ins.id) {
-            case X86_INS_INT3:
-            case X86_INS_UD2:
+            case x86_insn.X86_INS_INT3:
+            case x86_insn.X86_INS_UD2:
                 return true;
             default:
                 return false;
@@ -292,50 +292,50 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
         }
 
 
-        static int
+        static bool
         is_cs_cflow_group(byte g)
         {
             return (g == CS_GRP_JUMP) || (g == CS_GRP_CALL) || (g == CS_GRP_RET) || (g == CS_GRP_IRET);
         }
 
 
-        static int
+        static bool
         is_cs_cflow_ins(cs_insn ins)
         {
             uint i;
 
             for (i = 0; i < ins.detail.groups_count; i++) {
                 if (is_cs_cflow_group(ins.detail.groups[i])) {
-                    return 1;
+                    return true;;
                 }
             }
 
-            return 0;
+            return false;
         }
 
 
-        static int
+        static bool 
         is_cs_call_ins(cs_insn ins)
         {
             switch (ins.id) {
-            case X86_INS_CALL:
-            case X86_INS_LCALL:
-                return 1;
+            case x86_insn.X86_INS_CALL:
+            case x86_insn.X86_INS_LCALL:
+                return true;;
             default:
-                return 0;
+                return false;
             }
         }
 
 
-        static int
+        static bool
         is_cs_ret_ins(cs_insn ins)
         {
             switch (ins.id) {
-            case X86_INS_RET:
-            case X86_INS_RETF:
-                return 1;
+            case x86_insn.X86_INS_RET:
+            case x86_insn.X86_INS_RETF:
+                return true;;
             default:
-                return 0;
+                return false;
             }
         }
 
@@ -344,7 +344,7 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
         is_cs_unconditional_jmp_ins(cs_insn ins)
         {
             switch (ins.id) {
-            case X86_INS_JMP:
+            case x86_insn.X86_INS_JMP:
                 return true;
             default:
                 return false;
@@ -356,80 +356,80 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
         is_cs_conditional_cflow_ins(cs_insn ins)
         {
             switch (ins.id) {
-            case X86_INS_JAE:
-            case X86_INS_JA:
-            case X86_INS_JBE:
-            case X86_INS_JB:
-            case X86_INS_JCXZ:
-            case X86_INS_JECXZ:
-            case X86_INS_JE:
-            case X86_INS_JGE:
-            case X86_INS_JG:
-            case X86_INS_JLE:
-            case X86_INS_JL:
-            case X86_INS_JNE:
-            case X86_INS_JNO:
-            case X86_INS_JNP:
-            case X86_INS_JNS:
-            case X86_INS_JO:
-            case X86_INS_JP:
-            case X86_INS_JRCXZ:
-            case X86_INS_JS:
+            case x86_insn.X86_INS_JAE:
+            case x86_insn.X86_INS_JA:
+            case x86_insn.X86_INS_JBE:
+            case x86_insn.X86_INS_JB:
+            case x86_insn.X86_INS_JCXZ:
+            case x86_insn.X86_INS_JECXZ:
+            case x86_insn.X86_INS_JE:
+            case x86_insn.X86_INS_JGE:
+            case x86_insn.X86_INS_JG:
+            case x86_insn.X86_INS_JLE:
+            case x86_insn.X86_INS_JL:
+            case x86_insn.X86_INS_JNE:
+            case x86_insn.X86_INS_JNO:
+            case x86_insn.X86_INS_JNP:
+            case x86_insn.X86_INS_JNS:
+            case x86_insn.X86_INS_JO:
+            case x86_insn.X86_INS_JP:
+            case x86_insn.X86_INS_JRCXZ:
+            case x86_insn.X86_INS_JS:
                 return true;
-            case X86_INS_JMP:
+            case x86_insn.X86_INS_JMP:
             default:
                 return false;
             }
         }
 
 
-        static int
+        static bool
         is_cs_privileged_ins(cs_insn ins)
         {
             switch (ins.id) {
-            case X86_INS_HLT:
-            case X86_INS_IN:
-            case X86_INS_INSB:
-            case X86_INS_INSW:
-            case X86_INS_INSD:
-            case X86_INS_OUT:
-            case X86_INS_OUTSB:
-            case X86_INS_OUTSW:
-            case X86_INS_OUTSD:
-            case X86_INS_RDMSR:
-            case X86_INS_WRMSR:
-            case X86_INS_RDPMC:
-            case X86_INS_RDTSC:
-            case X86_INS_LGDT:
-            case X86_INS_LLDT:
-            case X86_INS_LTR:
-            case X86_INS_LMSW:
-            case X86_INS_CLTS:
-            case X86_INS_INVD:
-            case X86_INS_INVLPG:
-            case X86_INS_WBINVD:
-                return 1;
+            case x86_insn.X86_INS_HLT:
+            case x86_insn.X86_INS_IN:
+            case x86_insn.X86_INS_INSB:
+            case x86_insn.X86_INS_INSW:
+            case x86_insn.X86_INS_INSD:
+            case x86_insn.X86_INS_OUT:
+            case x86_insn.X86_INS_OUTSB:
+            case x86_insn.X86_INS_OUTSW:
+            case x86_insn.X86_INS_OUTSD:
+            case x86_insn.X86_INS_RDMSR:
+            case x86_insn.X86_INS_WRMSR:
+            case x86_insn.X86_INS_RDPMC:
+            case x86_insn.X86_INS_RDTSC:
+            case x86_insn.X86_INS_LGDT:
+            case x86_insn.X86_INS_LLDT:
+            case x86_insn.X86_INS_LTR:
+            case x86_insn.X86_INS_LMSW:
+            case x86_insn.X86_INS_CLTS:
+            case x86_insn.X86_INS_INVD:
+            case x86_insn.X86_INS_INVLPG:
+            case x86_insn.X86_INS_WBINVD:
+                return true;
             default:
-                return 0;
+                return false;
             }
         }
 
 
-        static uint8_t
+        static Operand.OperandType
         cs_to_nucleus_op_type(x86_op_type op)
         {
             switch (op) {
-            case X86_OP_REG:
-                return Operand::OP_TYPE_REG;
-            case X86_OP_IMM:
-                return Operand::OP_TYPE_IMM;
-            case X86_OP_MEM:
-                return Operand::OP_TYPE_MEM;
-            case X86_OP_FP:
-                return Operand::OP_TYPE_FP;
-            case X86_OP_INVALID:
+            case x86_op_type.X86_OP_REG:
+                return Operand.OperandType.OP_TYPE_REG;
+            case x86_op_type.X86_OP_IMM:
+                return Operand.OperandType.OP_TYPE_IMM;
+            case x86_op_type.X86_OP_MEM:
+                return Operand.OperandType.OP_TYPE_MEM;
+            case x86_op_type.X86_OP_FP:
+                return Operand.OperandType.OP_TYPE_FP;
+            case x86_op_type.X86_OP_INVALID:
             default:
-                return Operand::OP_TYPE_NONE;
+                return Operand.OperandType.OP_TYPE_NONE;
             }
         }
 
@@ -440,7 +440,15 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
             CS_MODE_16 = 16,
         }
 
+        static byte CS_GRP_JUMP;
+        static byte CS_GRP_CALL;
+        static byte CS_GRP_RET;
+        static byte CS_GRP_IRET;
+
+
         public static int CS_ARCH_X86 = 0x86;
+
+        public const int CS_ERR_OK = 0;
 
         public class csh
         {
@@ -449,7 +457,7 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
                 throw new NotImplementedException();
             }
 
-            internal static object cs_open(int cS_ARCH_X86, cs_mode cs_mode, out csh cs_dis)
+            internal static int cs_open(int cS_ARCH_X86, cs_mode cs_mode, out csh cs_dis)
             {
                 throw new NotImplementedException();
             }
@@ -477,7 +485,7 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
 
         public class cs_insn {
             internal ulong address;
-            public int id;
+            public x86_insn id;
             public byte size;
             internal string mnemonic;
             public cs_detail detail;
@@ -488,14 +496,93 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
         {
             public cs_x86 x86;
             internal uint groups_count;
-            public cs_group[] groups;
+            public byte[] groups;
         }
         public class cs_x86
         {
             public cs_x86_op[] operands;
+            internal byte addr_size;
+            internal int op_count;
         }
 
-        public class cs_x86_op { }
+        public class cs_x86_op
+        {
+            internal x86_op_type type;
+            public X86Value val;
+            internal byte size;
+
+            public x86_reg reg { get { return ((X86Reg)val).reg; } }
+            public long imm { get { return ((X86Imm)val).imm; } }
+            public double fp { get { return ((X87FP)val).fp; } }
+            public X86OpMem mem { get { return ((X86OpMem)val); } }
+        }
+
+        public enum x86_insn : short
+        {
+            X86_INS_HLT,
+            X86_INS_IN,
+X86_INS_INSB,
+X86_INS_INSW,
+X86_INS_INSD,
+X86_INS_OUT,
+X86_INS_OUTSB,
+X86_INS_OUTSW,
+X86_INS_OUTSD,
+X86_INS_RDMSR,
+X86_INS_WRMSR,
+X86_INS_RDPMC,
+X86_INS_RDTSC,
+X86_INS_LGDT,
+X86_INS_LLDT,
+X86_INS_LTR,
+X86_INS_LMSW,
+X86_INS_CLTS,
+X86_INS_INVD,
+X86_INS_INVLPG,
+X86_INS_WBINVD,
+            X86_INS_INVALID,
+
+            X86_INS_JAE,
+            X86_INS_JA,
+            X86_INS_JBE,
+            X86_INS_JB,
+            X86_INS_JCXZ,
+            X86_INS_JECXZ,
+            X86_INS_JE,
+            X86_INS_JGE,
+            X86_INS_JG,
+            X86_INS_JLE,
+            X86_INS_JL,
+            X86_INS_JNE,
+            X86_INS_JNO,
+            X86_INS_JNP,
+            X86_INS_JNS,
+            X86_INS_JO,
+            X86_INS_JP,
+            X86_INS_JRCXZ,
+            X86_INS_JS,
+            X86_INS_JMP,
+            X86_INS_NOP,
+            X86_INS_FNOP,
+            X86_INS_LEA,
+            X86_INS_XCHG,
+            X86_INS_MOV,
+            X86_INS_INT3,
+            X86_INS_UD2,
+            X86_INS_CALL,
+            X86_INS_LCALL,
+            X86_INS_RET,
+            X86_INS_RETF,
+        }
+
+        public enum x86_op_type : byte
+        {
+            X86_OP_IMM,
+            X86_OP_REG,
+            X86_OP_MEM,
+            X86_OP_FP,
+            X86_OP_INVALID
+        }
 
         public static int CS_OPT_DETAIL;
         public static int CS_OPT_ON;
@@ -512,7 +599,7 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
             bool init, cflow, cond, call;
             bool nop, trap, only_nop, priv, jmp;
             int ndisassembled;
-            csh cs_dis;
+            csh cs_dis = null;
             cs_mode cs_mode;
             cs_insn cs_ins;
             cs_x86_op cs_op;
@@ -523,7 +610,7 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
             Instruction ins;
             Operand op;
 
-            init = 0;
+            init = false;
             cs_ins = null;
 
             switch (bin.bits) {
@@ -537,27 +624,27 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
                 cs_mode = cs_mode.CS_MODE_16;
                 break;
             default:
-                print_err("unsupported bit width %u for architecture %s", bin.bits, bin.arch_str);
+                Log.print_err("unsupported bit width %u for architecture %s", bin.bits, bin.arch_str);
                 goto fail;
             }
 
             if (csh.cs_open(CS_ARCH_X86, cs_mode, out cs_dis) != CS_ERR_OK) {
-                print_err("failed to initialize libcapstone");
+                Log.print_err("failed to initialize libcapstone");
                 goto fail;
             }
-            init = 1;
+            init = true;
             csh.cs_option(cs_dis, CS_OPT_DETAIL, CS_OPT_ON);
             csh.cs_option(cs_dis, CS_OPT_SYNTAX, CS_OPT_SYNTAX_INTEL);
 
             cs_ins = csh.cs_malloc(cs_dis);
             if (cs_ins == null) {
-                print_err("out of memory");
+                Log.print_err("out of memory");
                 goto fail;
             }
 
             offset = bb.start - dis.section.vma;
             if ((bb.start < dis.section.vma) || (offset >= dis.section.size)) {
-                print_err("basic block address points outside of section '%s'", dis.section.name.c_str());
+                Log.print_err("basic block address points outside of section '%s'", dis.section.name);
                 goto fail;
             }
 
@@ -567,9 +654,9 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
             bb.end = bb.start;
             bb.section = dis.section;
             ndisassembled = 0;
-            only_nop = 0;
+            only_nop = false;
             while (cs_dis.cs_disasm_iter(ref pc, ref n, ref pc_addr, cs_ins)) {
-                if (cs_ins.id == X86_INS_INVALID) {
+                if (cs_ins.id == x86_insn.X86_INS_INVALID) {
                     bb.invalid = true;
                     bb.end += 1;
                     break;
@@ -584,7 +671,7 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
                         || (is_cs_semantic_nop_ins(cs_ins) && (bin.type != Binary.BinaryType.BIN_TYPE_PE))
                         /* Visual Studio uses int3 for padding */
                         || (trap && (bin.type == Binary.BinaryType.BIN_TYPE_PE));
-                ret = is_cs_ret_ins(cs_ins);
+                ret = is_cs_ret_ins(cs_ins) ? 1 : 0;
                 jmp = is_cs_unconditional_jmp_ins(cs_ins) || is_cs_conditional_cflow_ins(cs_ins);
                 cond = is_cs_conditional_cflow_ins(cs_ins);
                 cflow = is_cs_cflow_ins(cs_ins);
@@ -618,41 +705,41 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
                 ins.privileged = priv;
                 ins.trap = trap;
                 if (nop) ins.flags |= Instruction.InstructionFlags.INS_FLAG_NOP;
-                if (ret) ins.flags |= Instruction.InstructionFlags.INS_FLAG_RET;
+                if (ret != 0) ins.flags |= Instruction.InstructionFlags.INS_FLAG_RET;
                 if (jmp) ins.flags |= Instruction.InstructionFlags.INS_FLAG_JMP;
                 if (cond) ins.flags |= Instruction.InstructionFlags.INS_FLAG_COND;
                 if (cflow) ins.flags |= Instruction.InstructionFlags.INS_FLAG_CFLOW;
                 if (call) ins.flags |= Instruction.InstructionFlags.INS_FLAG_CALL;
 
                 for (i = 0; i < cs_ins.detail.x86.op_count; i++) {
-                    cs_op = &cs_ins.detail.x86.operands[i];
-                    ins.operands.push_back(Operand());
-                    op = &ins.operands.back();
+                    cs_op = cs_ins.detail.x86.operands[i];
+                    op = new Operand();
+                    ins.operands.Add(op);
                     op.type = cs_to_nucleus_op_type(cs_op.type);
                     op.size = cs_op.size;
                     if (op.type == Operand.OperandType.OP_TYPE_IMM) {
                         op.x86_value.imm = cs_op.imm;
-                    } else if (op.type == Operand::OP_TYPE_REG) {
+                    } else if (op.type == Operand.OperandType.OP_TYPE_REG) {
                         op.x86_value.reg = cs_op.reg;
                         if (cflow) ins.flags |= Instruction.InstructionFlags.INS_FLAG_INDIRECT;
-                    } else if (op.type == Operand::OP_TYPE_FP) {
+                    } else if (op.type == Operand.OperandType.OP_TYPE_FP) {
                         op.x86_value.fp = cs_op.fp;
-                    } else if (op.type == Operand::OP_TYPE_MEM) {
+                    } else if (op.type == Operand.OperandType.OP_TYPE_MEM) {
                         op.x86_value.mem.segment = cs_op.mem.segment;
                         op.x86_value.mem.@base = cs_op.mem.@base;
                         op.x86_value.mem.index = cs_op.mem.index;
                         op.x86_value.mem.scale = cs_op.mem.scale;
                         op.x86_value.mem.disp = cs_op.mem.disp;
-                        if (cflow) ins.flags |= Instruction::INS_FLAG_INDIRECT;
+                        if (cflow) ins.flags |= Instruction.InstructionFlags.INS_FLAG_INDIRECT;
                     }
                 }
 
                 for (i = 0; i < cs_ins.detail.groups_count; i++) {
                     if (is_cs_cflow_group(cs_ins.detail.groups[i])) {
                         for (j = 0; j < cs_ins.detail.x86.op_count; j++) {
-                            cs_op = &cs_ins.detail.x86.operands[j];
-                            if (cs_op.type == X86_OP_IMM) {
-                                ins.target = cs_op.imm;
+                            cs_op = cs_ins.detail.x86.operands[j];
+                            if (cs_op.type == x86_op_type.X86_OP_IMM) {
+                                ins.target = (ulong) cs_op.imm;
                             }
                         }
                     }
@@ -676,7 +763,7 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
             ret = -1;
 
             cleanup:
-            if (cs_ins !=) {
+            if (cs_ins != null) {
                 csh.cs_free(cs_ins, 1);
             }
             if (init) {
@@ -685,7 +772,6 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
             return ret;
         }
 
-
         static int
         nucleus_disasm_bb(Binary bin, DisasmSection dis, BB bb)
         {
@@ -693,7 +779,7 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
             case Binary.BinaryArch.ARCH_X86:
                 return nucleus_disasm_bb_x86(bin, dis, bb);
             default:
-                print_err("disassembly for architecture {0} is not supported", bin.arch_str);
+                Log.print_err("disassembly for architecture {0} is not supported", bin.arch_str);
                 return -1;
             }
         }
@@ -712,38 +798,39 @@ init_disasm(Binary bin, List<DisasmSection> disasm)
             mutants = null;
 
             if ((dis.section.type != Section.SectionType.SEC_TYPE_CODE) && options.only_code_sections) {
-                print_warn("skipping non-code section '{0}'", dis.section.name);
+                Log.print_warn("skipping non-code section '{0}'", dis.section.name);
                 return 0;
             }
 
-            verbose(2, "disassembling section '%s'", dis.section.name);
+            Log.verbose(2, "disassembling section '%s'", dis.section.name);
 
             Q.Enqueue(null);
-            while (!Q.empty()) {
+            while (Q.Count != 0) {
                 n = bb_mutate(dis, Q.Peek(), mutants);
                 Q.Dequeue();
                 for (i = 0; i < n; i++) {
-                    if (nucleus_disasm_bb(bin, dis, &mutants[i]) < 0) {
+                    if (nucleus_disasm_bb(bin, dis, mutants[i]) < 0) {
                         goto fail;
                     }
-                    if ((s = bb_score(dis, &mutants[i])) < 0) {
+                    if ((s = bb_score(dis, mutants[i])) < 0) {
                         goto fail;
                     }
                 }
-                if ((n = bb_select(dis, mutants, n)) < 0) {
+                if ((n = (uint) bb_select(dis, mutants, (int) n)) < 0) {
                     goto fail;
                 }
                 for (i = 0; i < n; i++) {
                     if (mutants[i].alive) {
-                        dis.addrmap.add_addr_flag(mutants[i].start, AddressMap::DISASM_REGION_BB_START);
+                        dis.addrmap.add_addr_flag(mutants[i].start, AddressMap.DisasmRegion.DISASM_REGION_BB_START);
                         foreach (var ins in mutants[i].insns) {
-                            dis.addrmap.add_addr_flag(ins.start, AddressMap::DISASM_REGION_INS_START);
+                            dis.addrmap.add_addr_flag(ins.start, AddressMap.DisasmRegion.DISASM_REGION_INS_START);
                         }
                         for (vma = mutants[i].start; vma < mutants[i].end; vma++) {
-                            dis.addrmap.add_addr_flag(vma, AddressMap::DISASM_REGION_CODE);
+                            dis.addrmap.add_addr_flag(vma, AddressMap.DisasmRegion.DISASM_REGION_CODE);
                         }
-                        dis.BBs.push_back(BB(mutants[i]));
-                        Q.push(&dis.BBs.back());
+                        var bb = new BB(mutants[i]);
+                        dis.BBs.Add(bb);
+                        Q.Enqueue(bb);
                     }
                 }
             }

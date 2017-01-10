@@ -17,9 +17,9 @@ namespace Nucleus
             ancestors.Clear(); targets.Clear(); }
         public void set(ulong start, ulong end) { reset(); this.start = start; this.end = end; }
 
-        bool is_addrtaken() { return addrtaken; }
-        bool is_padding() { return padding; }
-        bool is_trap() { return trap; }
+        public bool is_addrtaken() { return addrtaken; }
+        public bool is_padding() { return padding; }
+        public bool is_trap() { return trap; }
         //bool is_called    ();
         //bool returns      ();
 
