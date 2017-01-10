@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Nucleus
 {
-    class Symbol
+    public class Symbol
     {
         public
           enum SymbolType

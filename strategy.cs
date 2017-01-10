@@ -264,7 +264,7 @@ namespace Nucleus
 
         static int bb_select(DisasmSection dis, BB[] mutants, int len)
         {
-            if (options.strategy.function.select_function == null)
+            if (options.strategy.function == null)
             {
                 if (load_bb_strategy_functions() < 0) return 0;
             }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -68,6 +69,16 @@ namespace Nucleus
             Log.verbose(1, "address-taken analysis complete");
         }
 
+        private IEnumerator<T> read<T>(byte[] bytes, ulong offset)
+        {
+            throw new NotImplementedException();
+        }
+
+        private T moar<T>(IEnumerator<T> e)
+        {
+            e.MoveNext();
+            return e.Current;
+        }
 
         void
         find_switches_x86()
@@ -76,13 +87,9 @@ namespace Nucleus
             Edge conflict_edge;
             Section target_sec;
             Operand op_target, op_reg, op_mem;
-            int scale;
+            int scale = 0;
             int offset;
             ulong jmptab_addr, jmptab_idx, case_addr;
-            byte[] jmptab8;
-            ushort[] jmptab16;
-            uint[] jmptab32;
-            ulong[] jmptab64;
             Instruction ins;
             ///*/*std::*/*/list<Instruction>::iterator ins;
 
@@ -145,25 +152,25 @@ namespace Nucleus
                             Log.verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)",
                                        jmptab_addr, bb.insns.Last().start);
                             jmptab_idx = jmptab_addr - sec.vma;
-                            //jmptab8 = (uint8_t*)&sec.bytes[jmptab_idx];
-                            //jmptab16 = (uint16_t*)&sec.bytes[jmptab_idx];
-                            //jmptab32 = (uint32_t*)&sec.bytes[jmptab_idx];
-                            //jmptab64 = (ulong*)&sec.bytes[jmptab_idx];
+                            var jmptab8 =  read<byte>(sec.bytes,jmptab_idx);
+                            var jmptab16 = read<ushort>(sec.bytes,jmptab_idx);
+                            var jmptab32 = read<uint>(sec.bytes,jmptab_idx);
+                            var jmptab64 = read<ulong>(sec.bytes,jmptab_idx);
                             while (true) {
-                                if ((jmptab_idx + scale) >= sec.size) break;
-                                jmptab_idx += scale;
+                                if ((jmptab_idx + (ulong)scale) >= sec.size) break;
+                                jmptab_idx += (uint)scale;
                                 switch (scale) {
                                 case 1:
-                                    case_addr = (*jmptab8++);
+                                    case_addr =  moar(jmptab8);
                                     break;
                                 case 2:
-                                    case_addr = (*jmptab16++);
+                                    case_addr = moar(jmptab16);
                                     break;
                                 case 4:
-                                    case_addr = (*jmptab32++);
+                                    case_addr = moar(jmptab32);
                                     break;
                                 case 8:
-                                    case_addr = (*jmptab64++);
+                                    case_addr = moar(jmptab64);
                                     break;
                                 default:
                                     Log.print_warn("Unexpected scale factor in memory operand: %d", scale);
@@ -415,15 +422,28 @@ namespace Nucleus
                 return null;
             }
 
-            it = this.start2bb.upper_bound(addr);
-            if (it == start2bb.begin()) {
-                offset = 0;
-                return null;
-            }
-            bb = (*(--it)).second;
-            if ((addr >= bb.start) && (addr < bb.end)) {
-                offset = addr - bb.start;
-                return bb;
+            int lo = 0;
+            int hi = this.start2bb.Count - 1;
+            while (lo <= hi)
+            {
+                int mid = lo + (hi - lo) / 2;
+                bb = this.start2bb.Values[mid];
+                if (bb.start < addr)
+                {
+                    hi = mid - 1;
+                }
+                else if (bb.end >= addr)
+                {
+                    lo = mid + 1;
+                }
+                else
+                {
+                    if ((addr >= bb.start) && (addr < bb.end))
+                    {
+                        offset = (int)(addr - bb.start);
+                        return bb;
+                    }
+                }
             }
             offset = 0;
             return null;

@@ -6,8 +6,16 @@ namespace Nucleus
 {
     public partial class Function
     {
+        private static ulong global_id = 0;
 
-        public static ulong global_id = 0;
+        public CFG cfg;
+        public ulong id;
+        public ulong start;
+        public ulong end;
+        public List<BB> entry = new List<BB>();
+        public List<BB> BBs = new List<BB>();
+
+        public Function() { cfg = null; start = 0; end = 0; id = global_id++; }
 
         public void print(TextWriter @out)
         {
