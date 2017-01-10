@@ -1,41 +1,36 @@
 namespace Nucleus
-{ 
-public class options {
-  public int verbosity;
-  public int warnings;
-  public bool only_code_sections;
-  public int allow_privileged;
-  public int summarize_functions;
+{
+    public class options {
+        public int verbosity;
+        public bool warnings;
+        public bool only_code_sections;
+        public int allow_privileged;
+        public int summarize_functions;
 
-  struct {
-    string real;
-    string dir;
-    string base;
-  } nucleuspath;
+        public struct path_options {
+            string real;
+            string dir;
+            string @base;
+        }
+        public path_options nucleuspath;
 
-  struct {
-    string ida;
-    string dot;
-  } exports;
+        public struct export_options {
+            public string ida;
+            public string dot;
+        }
+        public path_options exports;
 
-  struct {
-    string        filename;
-    Binary::BinaryType type;
-    Binary::BinaryArch arch;
-    unsigned           bits;
-    uint64_t           base_vma;
-  } binary;
+        public struct binary_options {
+            public string filename;
+            public Binary.BinaryType type;
+            public Binary.BinaryArch arch;
+            public uint bits;
+            public ulong base_vma;
+        }
+        public binary_options binary;
 
-  struct {
-    string name;
-    double   (*score_function)  (DisasmSection*, BB*);
-    unsigned (*mutate_function) (DisasmSection*, BB*, BB**);
-    int      (*select_function) (DisasmSection*, BB*, unsigned);
-  } strategy_function;
-};
-extern struct options options;
+        public Strategy stategy_function;
+    }
 
-int parse_options (int argc, char *argv[]);
-
-#endif /* NUCLEUS_OPTIONS_H */
-
+    //static int parse_options(string[] args);
+}

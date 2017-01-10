@@ -1,27 +1,35 @@
-#include <stdio.h>
+using System;
+using System.IO;
 
-#include "edge.h"
-#include "insn.h"
-
-
-void
-Instruction::print(FILE *out)
+namespace Nucleus
 {
-  fprintf(out, "  0x%016jx  %s\t%s\n", start, mnem.c_str(), op_str.c_str());
-}
+    partial class Instruction
+    {
+        public void
+        print(TextWriter @out)
+        {
+            @out.WriteLine("  0x{0:X16}  {1}\t{0}", start, mnem, op_str);
+        }
 
-
-Edge::EdgeType
-Instruction::edge_type()
-{
-  if(flags & INS_FLAG_JMP) {
-    return (flags & INS_FLAG_INDIRECT) ? Edge::EDGE_TYPE_JMP_INDIRECT : Edge::EDGE_TYPE_JMP;
-  } else if(flags & INS_FLAG_CALL) {
-    return (flags & INS_FLAG_INDIRECT) ? Edge::EDGE_TYPE_CALL_INDIRECT : Edge::EDGE_TYPE_CALL;
-  } else if(flags & INS_FLAG_RET) {
-    return Edge::EDGE_TYPE_RET;
-  } else {
-    return Edge::EDGE_TYPE_NONE;
-  }
+        public Edge.EdgeType edge_type()
+        {
+            if ((flags & InstructionFlags.INS_FLAG_JMP) != 0)
+            {
+                return ((flags & InstructionFlags.INS_FLAG_INDIRECT) != 0) ? Edge.EdgeType.EDGE_TYPE_JMP_INDIRECT : Edge.EdgeType.EDGE_TYPE_JMP;
+            }
+            else if ((flags & InstructionFlags.INS_FLAG_CALL) != 0)
+            {
+                return ((flags & InstructionFlags.INS_FLAG_INDIRECT) != 0) ? Edge.EdgeType.EDGE_TYPE_CALL_INDIRECT : Edge.EdgeType.EDGE_TYPE_CALL;
+            }
+            else if ((flags & InstructionFlags.INS_FLAG_RET) != 0)
+            {
+                return Edge.EdgeType.EDGE_TYPE_RET;
+            }
+            else
+            {
+                return Edge.EdgeType.EDGE_TYPE_NONE;
+            }
+        }
+    }
 }
 

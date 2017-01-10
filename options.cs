@@ -5,9 +5,7 @@ namespace Nucleus
     { 
         public static options options = new options();
 
-
-void
-print_usage(char *prog)
+        static void print_usage(string prog)
 {
   int i;
   extern const char *strategy_functions_doc[];
@@ -53,7 +51,7 @@ print_usage(char *prog)
 
 
 int
-parse_options(int argc, char *argv[])
+parse_options(string [] argv)
 {
   int i, opt;
   char optstr[] = "vwhd:t:a:fb:Dpg:i:e:";

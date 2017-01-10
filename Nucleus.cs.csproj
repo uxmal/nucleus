@@ -45,9 +45,7 @@
     <Compile Include="cfg.cs" />
     <Compile Include="cfg.h.cs" />
     <Compile Include="dataregion.cs" />
-    <Compile Include="dataregion.h.cs" />
     <Compile Include="disasm.cs" />
-    <Compile Include="disasm.h.cs" />
     <Compile Include="edge.cs" />
     <Compile Include="edge.h.cs" />
     <Compile Include="exception.cs" />
@@ -71,38 +69,6 @@
     <Compile Include="strategy.h.cs" />
     <Compile Include="util.cs" />
     <Compile Include="util.h.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="bb.cc" />
-    <Content Include="bb.h" />
-    <Content Include="cfg.cc" />
-    <Content Include="cfg.h" />
-    <Content Include="dataregion.cc" />
-    <Content Include="dataregion.h" />
-    <Content Include="disasm.cc" />
-    <Content Include="disasm.h" />
-    <Content Include="edge.cc" />
-    <Content Include="edge.h" />
-    <Content Include="exception.cc" />
-    <Content Include="exception.h" />
-    <Content Include="export.cc" />
-    <Content Include="export.h" />
-    <Content Include="function.cc" />
-    <Content Include="function.h" />
-    <Content Include="insn.cc" />
-    <Content Include="insn.h" />
-    <Content Include="loader.cc" />
-    <Content Include="loader.h" />
-    <Content Include="log.cc" />
-    <Content Include="log.h" />
-    <Content Include="nucleus.cc" />
-    <Content Include="nucleus.h" />
-    <Content Include="options.cc" />
-    <Content Include="options.h" />
-    <Content Include="strategy.cc" />
-    <Content Include="strategy.h" />
-    <Content Include="util.cc" />
-    <Content Include="util.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="LICENSE" />

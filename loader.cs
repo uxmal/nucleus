@@ -1,86 +1,125 @@
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdio.h>
-#include <errno.h>
+using System;
 
-#include <string>
-#include <vector>
-
-#include <bfd.h>
-
-#include "log.h"
-#include "options.h"
-#include "loader.h"
-
-
-const char *binary_types_descr[][2] = {
-  {"auto", "Try to automatically determine binary format (default)"},
-  {"raw" , "Raw binary (memory dump, ROM, network capture, ...)"},
-  {"elf" , "Unix ELF"},
-  {"pe"  , "Windows PE"},
-  {NULL  , NULL}
-};
-
-const char *binary_arch_descr[][2] = {
-  {"auto"  , "Try to automatically determine architecture (default)"},
-  {"x86"   , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
-  {NULL    , NULL}
-};
-
-
-static bfd*
-open_bfd(string &fname)
+namespace Nucleus
 {
-  static int bfd_inited = 0;
+    partial class Nucleus
+    { 
 
-  bfd *bin;
+string [][] binary_types_descr = {
+  new[] {"auto", "Try to automatically determine binary format (default)"},
+  new[] {"raw" , "Raw binary (memory dump, ROM, network capture, ...)"},
+  new[] {"elf" , "Unix ELF"},
+  new[] {"pe"  , "Windows PE"},
+};
+
+string [][] binary_arch_descr = {
+  new [] {"auto"  , "Try to automatically determine architecture (default)"},
+  new [] {"x86"   , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
+};
+
+        #region BFD
+        public class bfd
+        {
+            internal static object error_no_error;
+            internal static object target_unknown_flavour;
+
+            internal static void init()
+            {
+                throw new NotImplementedException();
+            }
+
+            internal static bfd openr(string p, object o)
+            {
+                throw new NotImplementedException();
+            }
+
+            internal static object get_error()
+            {
+                throw new NotImplementedException();
+            }
+
+            internal static object errmsg(object v)
+            {
+                throw new NotImplementedException();
+            }
+
+            internal static bool check_format(bfd bin, int bfd_object)
+            {
+                throw new NotImplementedException();
+            }
+
+            internal static void set_error(object error_no_error)
+            {
+                throw new NotImplementedException();
+            }
+
+            internal static object get_flavour(bfd bin)
+            {
+                throw new NotImplementedException();
+            }
+
+            internal static long get_symtab_upper_bound(bfd bfd_h)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        const int bfd_object = 0x4F;
+
+        #endregion
+
+        static bool bfd_inited = false;
+
+        static bfd open_bfd(string fname)
+{
+
+  bfd bin;
 
   if(!bfd_inited) {
-    bfd_init();
-    bfd_inited = 1;
+    bfd.init();
+    bfd_inited = true;
   }
 
-  bin = bfd_openr(fname.c_str(), NULL);
-  if(!bin) {
-    print_err("failed to open binary '%s' (%s)", fname.c_str(), bfd_errmsg(bfd_get_error()));
-    return NULL;
+  bin = bfd.openr(fname, null);
+  if(bin == null) {
+    print_err("failed to open binary '{0}' ({1})", fname, bfd.errmsg(bfd.get_error()));
+    return null;
   }
 
-  if(!bfd_check_format(bin, bfd_object)) {
-    print_err("file '%s' does not look like a binary object (%s), maybe load as raw?", fname.c_str(), bfd_errmsg(bfd_get_error()));
-    return NULL;
+  if(!bfd.check_format(bin, bfd_object)) {
+    print_err("file '{0}' does not look like a binary object ({1}), maybe load as raw?", fname, bfd.errmsg(bfd.get_error()));
+    return null;
   }
 
   /* Some versions of bfd_check_format pessimistically set a wrong_format
    * error before detecting the format, and then neglect to unset it once
    * the format has been detected. We unset it manually to prevent problems. */
-  bfd_set_error(bfd_error_no_error);
+  bfd.set_error(bfd.error_no_error);
 
-  if(bfd_get_flavour(bin) == bfd_target_unknown_flavour) {
-    print_err("unrecognized format for binary '%s' (%s)", fname.c_str(), bfd_errmsg(bfd_get_error()));
-    return NULL;
+  if(bfd.get_flavour(bin) == bfd.target_unknown_flavour) {
+    print_err("unrecognized format for binary '{0}' ({1})", fname, bfd.errmsg(bfd.get_error()));
+    return null;
   }
 
-  verbose(2, "binary '%s' has format '%s'", fname.c_str(), bin->xvec->name);
+  verbose(2, "binary '{0}' has format '{1}'", fname, bin.xvec.name);
 
   return bin;
 }
 
 
 int
-load_symbols_bfd(bfd *bfd_h, Binary *bin)
+load_symbols_bfd(bfd bfd_h, Binary bin)
 {
   int ret;
   long n, nsyms, i;
-  asymbol **bfd_symtab;
-  Symbol *sym;
+  asymbol [] bfd_symtab;
+  Symbol sym;
 
-  bfd_symtab = NULL;
+  bfd_symtab = null;
 
-  n = bfd_get_symtab_upper_bound(bfd_h);
+  n = bfd.get_symtab_upper_bound(bfd_h);
   if(n < 0) {
-    print_err("failed to read symtab (%s)", bfd_errmsg(bfd_get_error()));
+    print_err("failed to read symtab ({0})", bfd.errmsg(bfd.get_error()));
     goto fail;
   } else if(n) {
     bfd_symtab = (asymbol**)malloc(n);
@@ -364,10 +403,9 @@ cleanup:
 }
 
 
-int
-load_binary(string &fname, Binary *bin, Binary::BinaryType type)
+static int load_binary(string fname, out Binary bin, Binary.BinaryType type)
 {
-  if(type == Binary::BIN_TYPE_RAW) {
+  if(type == Binary.BinaryType.BIN_TYPE_RAW) {
     return load_binary_raw(fname, bin, type);
   } else {
     return load_binary_bfd(fname, bin, type);

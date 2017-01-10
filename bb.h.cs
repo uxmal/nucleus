@@ -15,7 +15,7 @@ namespace Nucleus
         void reset() { start = 0; end = 0; insns.Clear(); function = null; section = null; score = 0.0;
             alive = false; invalid = false; privileged = false; addrtaken = false; padding = false; trap = false;
             ancestors.Clear(); targets.Clear(); }
-        void set(ulong start, ulong end) { reset(); this.start = start; this.end = end; }
+        public void set(ulong start, ulong end) { reset(); this.start = start; this.end = end; }
 
         bool is_addrtaken() { return addrtaken; }
         bool is_padding() { return padding; }
@@ -25,24 +25,24 @@ namespace Nucleus
 
         //void print(FILE *out);
 
-        static int comparator(BB bb, BB cc) { return bb.start.CompareTo(cc.start); }
+        public static int comparator(BB bb, BB cc) { return bb.start.CompareTo(cc.start); }
         //inline bool operator<  (const BB& cc) const { return this.start < cc.start; }
 
-        ulong start;
-        ulong end;
-        List<Instruction> insns;
-        Function function;
-        Section section;
+        public ulong start;
+        public ulong end;
+        public List<Instruction> insns;
+        public Function function;
+        public Section section;
 
-        double score;
-        bool alive;
-        bool invalid;
-        bool privileged;
-        bool addrtaken;
-        bool padding;
-        bool trap;
+        public double score;
+        public bool alive;
+        public bool invalid;
+        public bool privileged;
+        public bool addrtaken;
+        public bool padding;
+        public bool trap;
 
-        List<Edge> ancestors;
-        List<Edge> targets;
+        public List<Edge> ancestors;
+        public List<Edge> targets;
     }
 }

@@ -1,50 +1,31 @@
-#include <stdio.h>
-#include <stdarg.h>
+using System;
 
-#include "options.h"
-#include "log.h"
-
-#define ERROUT stderr
-
-
-void
-verbose(int level, char const *fmt, ...)
+namespace Nucleus
 {
-  va_list args;
+    partial class Log
+    {
 
-  if(options.verbosity >= level) {
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    printf("\n");
-    va_end(args);
-  }
+        public static void verbose(int level, string fmt, params object[] args)
+        {
+            if (Nucleus.options.verbosity >= level)
+            {
+                Console.Out.WriteLine(fmt, args);
+            }
+        }
+
+        public static void print_warn(string fmt, params object[] args)
+        {
+            if (Nucleus.options.warnings)
+            {
+                Console.Error.Write("WARNING: ");
+                Console.Error.WriteLine(fmt, args);
+            }
+        }
+
+        public static void print_err(string fmt, params object[] args)
+        {
+            Console.Error.Write("ERROR: ");
+            Console.Error.WriteLine(fmt, args);
+        }
+    }
 }
-
-
-void
-print_warn(char const *fmt, ...)
-{
-  va_list args;
-
-  if(options.warnings) {
-    va_start(args, fmt);
-    fprintf(ERROUT, "WARNING: ");
-    vfprintf(ERROUT, fmt, args);
-    fprintf(ERROUT, "\n");
-    va_end(args);
-  }
-}
-
-
-void
-print_err(char const *fmt, ...)
-{
-  va_list args;
-
-  va_start(args, fmt);
-  fprintf(ERROUT, "ERROR: ");
-  vfprintf(ERROUT, fmt, args);
-  fprintf(ERROUT, "\n");
-  va_end(args);
-}
-
