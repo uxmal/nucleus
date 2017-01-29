@@ -97,13 +97,6 @@ CFG::find_switches_x86()
   uint64_t *jmptab64;
   std::list<Instruction>::iterator ins;
 
-  /* FIXME: get rid of the assumption that the instruction loading the
-   *        jump table entry is separate from the indirect jump itself;
-   *        this is often not the case in optimized binaries. For instance,
-   *        in xalan compiled with gcc/x64 at O3, we currently miss instructions
-   *        that index a jump table like this:
-   *            jmpq   *0x7a1ae8(,%rcx,8)
-   */
   for(auto &kv: this->start2bb) {
     bb = kv.second;
     jmptab_addr = 0;
@@ -117,34 +110,36 @@ CFG::find_switches_x86()
       }
       target_sec = bb->section;
       op_target  = &bb->insns.back().operands[0];
-      if(op_target->type != Operand::OP_TYPE_REG) {
-        continue;
-      }
-      ins = bb->insns.end();
-      ins--; /* Skip the jmp itself */
-      while(ins != bb->insns.begin()) {
-        ins--;
-        if(ins->operands.empty()) {
-          continue;
-        }
-        op_reg = &ins->operands[0];
-        if(op_reg->type != Operand::OP_TYPE_REG) {
-          continue;
-        } else if(op_reg->x86_value.reg != op_target->x86_value.reg) {
-          continue;
-        } else {
-          /* This is the last instruction that loads the jump target register,
-           * see if we can find a jump table address from it */
-          if(ins->operands.size() >= 2) {
-            op_mem = &ins->operands[1];
-            if(op_mem->type == Operand::OP_TYPE_MEM) {
-              jmptab_addr = (uint64_t)op_mem->x86_value.mem.disp;
-              scale = op_mem->x86_value.mem.scale;
-            }
-          } else {
-            /* No luck :-( */
+      if(op_target->type == Operand::OP_TYPE_MEM) {
+        jmptab_addr = (uint64_t)op_target->x86_value.mem.disp;
+        scale = op_target->x86_value.mem.scale;
+      } else if(op_target->type != Operand::OP_TYPE_REG) {
+        ins = bb->insns.end();
+        ins--; /* Skip the jmp itself */
+        while(ins != bb->insns.begin()) {
+          ins--;
+          if(ins->operands.empty()) {
+            continue;
           }
-          break;
+          op_reg = &ins->operands[0];
+          if(op_reg->type != Operand::OP_TYPE_REG) {
+            continue;
+          } else if(op_reg->x86_value.reg != op_target->x86_value.reg) {
+            continue;
+          } else {
+            /* This is the last instruction that loads the jump target register,
+             * see if we can find a jump table address from it */
+            if(ins->operands.size() >= 2) {
+              op_mem = &ins->operands[1];
+              if(op_mem->type == Operand::OP_TYPE_MEM) {
+                jmptab_addr = (uint64_t)op_mem->x86_value.mem.disp;
+                scale = op_mem->x86_value.mem.scale;
+              }
+            } else {
+              /* No luck :-( */
+            }
+            break;
+          }
         }
       }
     }
