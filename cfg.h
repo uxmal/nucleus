@@ -33,6 +33,7 @@ public:
 private:
   void analyze_addrtaken_x86 ();
   void analyze_addrtaken     ();
+  void mark_jmptab_as_data   (uint64_t start, uint64_t end);
   void find_switches_x86     ();
   void find_switches         ();
   void expand_function       (Function *f, BB *bb);

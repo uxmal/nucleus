@@ -82,6 +82,27 @@ CFG::analyze_addrtaken()
 
 
 void
+CFG::mark_jmptab_as_data(uint64_t start, uint64_t end)
+{
+  uint64_t addr;
+  BB *bb, *cc;
+
+  bb = NULL;
+  cc = NULL;
+  for(addr = start; addr < end; addr++) {
+    bb = this->get_bb(addr, NULL);
+    if(!bb) continue;
+    if(bb != cc) {
+      bb->invalid = true;
+      unlink_bb(bb);
+      bad_bbs[bb->start] = bb;
+      cc = bb;
+    }
+  }
+}
+
+
+void
 CFG::find_switches_x86()
 {
   BB *bb, *cc;
@@ -90,7 +111,7 @@ CFG::find_switches_x86()
   Operand *op_target, *op_reg, *op_mem;
   int scale;
   unsigned offset;
-  uint64_t jmptab_addr, jmptab_idx, case_addr;
+  uint64_t jmptab_addr, jmptab_idx, jmptab_end, case_addr;
   uint8_t *jmptab8;
   uint16_t *jmptab16;
   uint32_t *jmptab32;
@@ -145,17 +166,20 @@ CFG::find_switches_x86()
     }
 
     if(jmptab_addr) {
+      jmptab_end = 0;
       for(auto &sec: this->binary->sections) {
         if(sec.contains(jmptab_addr)) {
           verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)", 
                      jmptab_addr, bb->insns.back().start);
           jmptab_idx = jmptab_addr-sec.vma;
+          jmptab_end = jmptab_addr;
           jmptab8  = (uint8_t*) &sec.bytes[jmptab_idx];
           jmptab16 = (uint16_t*)&sec.bytes[jmptab_idx];
           jmptab32 = (uint32_t*)&sec.bytes[jmptab_idx];
           jmptab64 = (uint64_t*)&sec.bytes[jmptab_idx];
           while(1) {
             if((jmptab_idx+scale) >= sec.size) break;
+            jmptab_end += scale;
             jmptab_idx += scale;
             switch(scale) {
               case 1:
@@ -203,6 +227,10 @@ CFG::find_switches_x86()
           break;
         }
       }
+
+      if(jmptab_addr && jmptab_end) {
+        mark_jmptab_as_data(jmptab_addr, jmptab_end);
+      }
     }
   }
 }
@@ -232,7 +260,7 @@ CFG::expand_function(Function *f, BB *bb)
   if(!bb) {
     bb = f->BBs.front();
   } else {
-    if(bb->section->is_import_table()) {
+    if(bb->section->is_import_table() || bb->is_invalid()) {
       return;
     } else if(bb->function) {
       return;
@@ -295,7 +323,7 @@ CFG::find_functions()
   /* Detect functions for remaining BBs through connected-component analysis */
   for(auto &kv: this->start2bb) {
     bb = kv.second;
-    if(bb->section->is_import_table() || bb->is_padding()) {
+    if(bb->section->is_import_table() || bb->is_padding() || bb->is_invalid()) {
       continue;
     } else if(bb->function) {
       continue;

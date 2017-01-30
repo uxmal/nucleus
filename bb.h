@@ -26,6 +26,7 @@ public:
   void set(uint64_t start, uint64_t end) { reset(); this->start = start; this->end = end; }
 
   bool is_addrtaken () { return addrtaken; }
+  bool is_invalid   () { return invalid; }
   bool is_padding   () { return padding; }
   bool is_trap      () { return trap; }
   bool is_called    ();
