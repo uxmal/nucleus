@@ -50,6 +50,8 @@ print_usage(char *prog)
   printf("     : export CFG to graphviz dot file\n");
   printf("  -i <file>\n");
   printf("     : export binary info to IDA Pro script\n");
+  printf("  -n <file>\n");
+  printf("     : export binary info to Binary Ninja script\n");
   printf("  -v : verbose\n");
   printf("  -w : disable warnings\n");
   printf("  -h : help\n");
@@ -162,6 +164,10 @@ parse_options(int argc, char *argv[])
 
     case 'i':
       options.exports.ida = std::string(optarg);
+      break;
+
+    case 'n':
+      options.exports.binja = std::string(optarg);
       break;
 
     case 'd':

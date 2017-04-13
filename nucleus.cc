@@ -75,6 +75,9 @@ main(int argc, char *argv[])
   if(!options.exports.ida.empty()) {
     (void)export_bin2ida(options.exports.ida, &bin, &disasm, &cfg);
   }
+  if(!options.exports.binja.empty()) {
+    (void)export_bin2binja(options.exports.binja, &bin, &disasm, &cfg);
+  }
   if(!options.exports.dot.empty()) {
     (void)export_cfg2dot(options.exports.dot, &cfg);
   }
