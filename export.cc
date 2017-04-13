@@ -93,7 +93,7 @@ export_bin2binja(std::string &fname, Binary *bin, std::list<DisasmSection> *disa
   fprintf(f, "        bv.remove_function(f)\n");
   fprintf(f, "    for f in functions:\n");
   fprintf(f, "        print 'nucleus: defining function 0x%%x' %% (f)\n");
-  fprintf(f, "        bv.add_function(f):\n");
+  fprintf(f, "        bv.add_function(f)\n");
   fprintf(f, "\n");
   fprintf(f, "mark_functions()\n");
 

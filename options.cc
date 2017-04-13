@@ -65,7 +65,7 @@ int
 parse_options(int argc, char *argv[])
 {
   int i, opt;
-  char optstr[] = "vwhd:t:a:fb:Dpg:i:e:";
+  char optstr[] = "vwhd:t:a:fb:Dpg:i:n:e:";
   extern const char *binary_types_descr[][2];
   extern const char *binary_arch_descr[][2];
   std::string s;
