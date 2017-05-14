@@ -21,6 +21,9 @@
 #include "options.h"
 #include "log.h"
 
+#include "disasm-arm.h"
+#include "disasm-mips.h"
+#include "disasm-ppc.h"
 #include "disasm-x86.h"
 
 
@@ -189,6 +192,12 @@ static int
 nucleus_disasm_bb(Binary *bin, DisasmSection *dis, BB *bb)
 {
   switch(bin->arch) {
+  case Binary::ARCH_ARM:
+    return nucleus_disasm_bb_arm(bin, dis, bb);
+  case Binary::ARCH_MIPS:
+    return nucleus_disasm_bb_mips(bin, dis, bb);
+  case Binary::ARCH_PPC:
+    return nucleus_disasm_bb_ppc(bin, dis, bb);
   case Binary::ARCH_X86:
     return nucleus_disasm_bb_x86(bin, dis, bb);
   default:

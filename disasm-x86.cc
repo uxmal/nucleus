@@ -1,24 +1,6 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <assert.h>
-
-#include <vector>
-#include <list>
-#include <map>
-#include <queue>
-#include <string>
-#include <algorithm>
-
 #include <capstone/capstone.h>
 
-#include "loader.h"
-#include "bb.h"
-#include "insn.h"
-#include "dataregion.h"
-#include "disasm.h"
-#include "strategy.h"
-#include "util.h"
-#include "options.h"
+#include "disasm-x86.h"
 #include "log.h"
 
 
