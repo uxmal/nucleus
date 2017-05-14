@@ -21,23 +21,37 @@ public:
     OP_TYPE_FP   = 4
   };
 
+  union PPCValue {
+    PPCValue() { mem.base = 0; mem.disp = 0; }
+    PPCValue(const PPCValue &v) { mem.base = v.mem.base; mem.disp = v.mem.disp; }
+
+    ppc_reg    reg;
+    int32_t    imm;
+    ppc_op_mem mem;
+  };
+
+  union X86Value {
+    X86Value() { mem.segment = 0; mem.base = 0; mem.index = 0; mem.scale = 0; mem.disp = 0; }
+    X86Value(const X86Value &v) { mem.segment = v.mem.segment; mem.base = v.mem.base;
+      mem.index = v.mem.index; mem.scale = v.mem.scale;
+      mem.disp = v.mem.disp; }
+
+    x86_reg    reg;
+    int64_t    imm;
+    double     fp;
+    x86_op_mem mem;
+  };
+
   Operand() : type(OP_TYPE_NONE), size(0), x86_value() {}
   Operand(const Operand &op) : type(op.type), size(op.size), x86_value(op.x86_value) {}
 
   uint8_t type;
   uint8_t size;
 
-  union X86Value {
-    X86Value() { mem.segment = 0; mem.base = 0; mem.index = 0; mem.scale = 0; mem.disp = 0; }
-    X86Value(const X86Value &v) { mem.segment = v.mem.segment; mem.base = v.mem.base;
-                                  mem.index = v.mem.index; mem.scale = v.mem.scale; 
-                                  mem.disp = v.mem.disp; }
-
-    x86_reg    reg;
-    int64_t    imm;
-    double     fp;
-    x86_op_mem mem;
-  } x86_value; /* Only set if the arch is x86 */
+  union {
+    PPCValue ppc_value; /* Only set if the arch is ppc */
+    X86Value x86_value; /* Only set if the arch is x86 */
+  };
 };
 
 class Instruction {

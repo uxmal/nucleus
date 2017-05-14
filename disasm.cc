@@ -6,15 +6,12 @@
 #include <list>
 #include <map>
 #include <queue>
-#include <string>
 #include <algorithm>
 
 #include <capstone/capstone.h>
 
 #include "loader.h"
 #include "bb.h"
-#include "insn.h"
-#include "dataregion.h"
 #include "disasm.h"
 #include "strategy.h"
 #include "util.h"
