@@ -54,7 +54,10 @@ public:
   };
   enum BinaryArch {
     ARCH_NONE = 0,
-    ARCH_X86  = 1
+    ARCH_ARM  = 1,
+    ARCH_MIPS = 2,
+    ARCH_PPC  = 3,
+    ARCH_X86  = 4,
   };
 
   Binary() : type(0), arch(0), bits(0), entry(0) {}
