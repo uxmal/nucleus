@@ -295,7 +295,6 @@ nucleus_disasm_bb_ppc(Binary *bin, DisasmSection *dis, BB *bb)
       ins->operands.push_back(Operand());
       op = &ins->operands.back();
       op->type = cs_to_nucleus_op_type(cs_op->type);
-      op->size = 4;
       if(op->type == Operand::OP_TYPE_IMM) {
         op->ppc_value.imm = cs_op->imm;
       } else if(op->type == Operand::OP_TYPE_REG) {

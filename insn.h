@@ -21,6 +21,17 @@ public:
     OP_TYPE_FP   = 4
   };
 
+  union ARMValue {
+    ARMValue() { mem.base = 0; mem.disp = 0; }
+    ARMValue(const ARMValue &v) { mem.base = v.mem.base; mem.index = v.mem.index;
+      mem.scale = v.mem.scale; mem.disp = v.mem.disp; }
+
+    arm_reg    reg;
+    int32_t    imm;
+    double     fp;
+    arm_op_mem mem;
+  };
+
   union PPCValue {
     PPCValue() { mem.base = 0; mem.disp = 0; }
     PPCValue(const PPCValue &v) { mem.base = v.mem.base; mem.disp = v.mem.disp; }
@@ -49,6 +60,7 @@ public:
   uint8_t size;
 
   union {
+    ARMValue arm_value; /* Only set if the arch is arm */
     PPCValue ppc_value; /* Only set if the arch is ppc */
     X86Value x86_value; /* Only set if the arch is x86 */
   };
