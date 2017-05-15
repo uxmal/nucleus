@@ -43,6 +43,16 @@ public:
     arm_op_mem mem;
   };
 
+  union MIPSValue {
+    MIPSValue() { mem.base = 0; mem.disp = 0; }
+    MIPSValue(const MIPSValue &v) { mem.base = v.mem.base; mem.disp = v.mem.disp; }
+
+    mips_reg    reg;
+    int32_t     imm;
+    double      fp;
+    mips_op_mem mem;
+  };
+
   union PPCValue {
     PPCValue() { mem.base = 0; mem.disp = 0; }
     PPCValue(const PPCValue &v) { mem.base = v.mem.base; mem.disp = v.mem.disp; }
@@ -73,6 +83,7 @@ public:
   union {
     AArch64Value aarch64_value; /* Only set if the arch is aarch64 */
     ARMValue arm_value; /* Only set if the arch is arm */
+    MIPSValue mips_value; /* Only set if the arch is mips */
     PPCValue ppc_value; /* Only set if the arch is ppc */
     X86Value x86_value; /* Only set if the arch is x86 */
   };
