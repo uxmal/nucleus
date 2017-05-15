@@ -23,12 +23,13 @@ const char *binary_types_descr[][2] = {
 };
 
 const char *binary_arch_descr[][2] = {
-  {"auto"  , "Try to automatically determine architecture (default)"},
-  {"arm"   , "arm"},
-  {"mips"  , "mips"},
-  {"ppc"   , "ppc"},
-  {"x86"   , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
-  {NULL    , NULL}
+  {"auto"    , "Try to automatically determine architecture (default)"},
+  {"aarch64" , "aarch64"},
+  {"arm"     , "arm"},
+  {"mips"    , "mips"},
+  {"ppc"     , "ppc"},
+  {"x86"     , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
+  {NULL      , NULL}
 };
 
 
@@ -282,7 +283,8 @@ load_binary_bfd(std::string &fname, Binary *bin, Binary::BinaryType type)
   case bfd_arch_aarch64:
     switch(bfd_info->mach) {
     case bfd_mach_aarch64:
-      bin->arch = Binary::ARCH_ARM;
+    case bfd_mach_aarch64_ilp32:
+      bin->arch = Binary::ARCH_AARCH64;
       bin->bits = 64;
       break;
     default:

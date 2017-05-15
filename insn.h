@@ -21,8 +21,19 @@ public:
     OP_TYPE_FP   = 4
   };
 
+  union AArch64Value {
+    AArch64Value() { mem.base = 0; mem.index = 0; mem.disp = 0; }
+    AArch64Value(const AArch64Value &v) { mem.base = v.mem.base;
+      mem.index = v.mem.index; mem.disp = v.mem.disp; }
+
+    arm64_reg    reg;
+    int32_t      imm;
+    double       fp;
+    arm64_op_mem mem;
+  };
+
   union ARMValue {
-    ARMValue() { mem.base = 0; mem.disp = 0; }
+    ARMValue() { mem.base = 0; mem.index = 0; mem.scale = 0; mem.disp = 0; }
     ARMValue(const ARMValue &v) { mem.base = v.mem.base; mem.index = v.mem.index;
       mem.scale = v.mem.scale; mem.disp = v.mem.disp; }
 
@@ -60,6 +71,7 @@ public:
   uint8_t size;
 
   union {
+    AArch64Value aarch64_value; /* Only set if the arch is aarch64 */
     ARMValue arm_value; /* Only set if the arch is arm */
     PPCValue ppc_value; /* Only set if the arch is ppc */
     X86Value x86_value; /* Only set if the arch is x86 */

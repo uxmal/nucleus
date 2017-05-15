@@ -53,11 +53,12 @@ public:
     BIN_TYPE_PE   = 3
   };
   enum BinaryArch {
-    ARCH_NONE = 0,
-    ARCH_ARM  = 1,
-    ARCH_MIPS = 2,
-    ARCH_PPC  = 3,
-    ARCH_X86  = 4,
+    ARCH_NONE    = 0,
+    ARCH_AARCH64 = 1,
+    ARCH_ARM     = 2,
+    ARCH_MIPS    = 3,
+    ARCH_PPC     = 4,
+    ARCH_X86     = 5
   };
 
   Binary() : type(0), arch(0), bits(0), entry(0) {}
