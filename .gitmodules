@@ -1,3 +1,0 @@
-[submodule "externals/lief"]
-	path = externals/lief
-	url = https://github.com/lief-project/LIEF.git
