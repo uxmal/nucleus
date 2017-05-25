@@ -27,7 +27,7 @@ const char *binary_arch_descr[][2] = {
   {"aarch64" , "aarch64"},
   {"arm"     , "arm"},
   {"mips"    , "mips"},
-  {"ppc"     , "ppc"},
+  {"ppc"     , "ppc: Specify ppc-32 or ppc-64 (default ppc-64)"},
   {"x86"     , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
   {NULL      , NULL}
 };

@@ -13,6 +13,9 @@ is_cs_nop_ins(cs_insn *ins)
 
   ppc = &ins->detail->ppc;
   switch(ins->id) {
+  case PPC_INS_NOP:
+    /* nop */
+    return 1;
   case PPC_INS_ORI:
     /* ori r0,r0,r0 */
     if((ppc->op_count == 3)
@@ -102,9 +105,20 @@ is_cs_ret_ins(cs_insn *ins)
 static int
 is_cs_unconditional_jmp_ins(cs_insn *ins)
 {
+  int32_t bo, bi;
   switch(ins->id) {
   case PPC_INS_B:
   case PPC_INS_BA:
+    return 1;
+  case PPC_INS_BCCTR:
+    assert(ins->detail->ppc.op_count >= 2);
+    assert(ins->detail->ppc.operands[0].type == PPC_OP_IMM);
+    assert(ins->detail->ppc.operands[1].type == PPC_OP_IMM);
+    bo = ins->detail->ppc.operands[0].imm;
+    bi = ins->detail->ppc.operands[1].imm;
+    if (bo == 20 && bi == 0) {
+      return 1;
+    }
     return 1;
   default:
     return 0;
@@ -119,12 +133,6 @@ is_cs_conditional_cflow_ins(cs_insn *ins)
   switch(ins->id) {
   case PPC_INS_BC:
   case PPC_INS_BCA:
-  case PPC_INS_BCL:
-  case PPC_INS_BCLA:
-  case PPC_INS_BCLR:
-  case PPC_INS_BCLRL:
-  case PPC_INS_BCCTR:
-  case PPC_INS_BCCTRL:
     assert(ins->detail->ppc.op_count >= 2);
     assert(ins->detail->ppc.operands[0].type == PPC_OP_IMM);
     assert(ins->detail->ppc.operands[1].type == PPC_OP_IMM);
