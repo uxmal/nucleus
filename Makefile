@@ -26,3 +26,5 @@ clean:
 	rm -Rf obj
 	rm -f $(BIN)
 
+setup:
+	sudo apt install binutils-multiarch-dev libcapstone-dev
