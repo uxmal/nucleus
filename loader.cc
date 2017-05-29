@@ -23,9 +23,13 @@ const char *binary_types_descr[][2] = {
 };
 
 const char *binary_arch_descr[][2] = {
-  {"auto"  , "Try to automatically determine architecture (default)"},
-  {"x86"   , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
-  {NULL    , NULL}
+  {"auto"    , "Try to automatically determine architecture (default)"},
+  {"aarch64" , "aarch64"},
+  {"arm"     , "arm"},
+  {"mips"    , "mips"},
+  {"ppc"     , "ppc: Specify ppc-32 or ppc-64 (default ppc-64)"},
+  {"x86"     , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
+  {NULL      , NULL}
 };
 
 
@@ -249,16 +253,81 @@ load_binary_bfd(std::string &fname, Binary *bin, Binary::BinaryType type)
 
   bfd_info = bfd_get_arch_info(bfd_h);
   bin->arch_str = std::string(bfd_info->printable_name);
-  switch(bfd_info->mach) {
-  case bfd_mach_i386_i386:
-    bin->arch = Binary::ARCH_X86; 
-    bin->bits = 32;
+  switch(bfd_info->arch) {
+  case bfd_arch_i386:
+    switch(bfd_info->mach) {
+    case bfd_mach_i386_i386:
+      bin->arch = Binary::ARCH_X86;
+      bin->bits = 32;
+      break;
+    case bfd_mach_x86_64:
+      bin->arch = Binary::ARCH_X86;
+      bin->bits = 64;
+      break;
+    default:
+      goto fail_arch;
+    }
     break;
-  case bfd_mach_x86_64:
-    bin->arch = Binary::ARCH_X86;
-    bin->bits = 64;
+
+  case bfd_arch_arm:
+    switch(bfd_info->mach) {
+    case bfd_mach_arm_5T:
+      bin->arch = Binary::ARCH_ARM;
+      bin->bits = 32;
+      break;
+    default:
+      goto fail_arch;
+    }
     break;
+
+  case bfd_arch_aarch64:
+    switch(bfd_info->mach) {
+    case bfd_mach_aarch64:
+    case bfd_mach_aarch64_ilp32:
+      bin->arch = Binary::ARCH_AARCH64;
+      bin->bits = 64;
+      break;
+    default:
+      goto fail_arch;
+    }
+    break;
+
+  case bfd_arch_mips:
+    switch(bfd_info->mach) {
+    case bfd_mach_mips16:
+      bin->arch = Binary::ARCH_MIPS;
+      bin->bits = 16;
+      break;
+    case bfd_mach_mipsisa32r2:
+      bin->arch = Binary::ARCH_MIPS;
+      bin->bits = 32;
+      break;
+    case bfd_mach_mipsisa64:
+      bin->arch = Binary::ARCH_MIPS;
+      bin->bits = 64;
+      break;
+    default:
+      goto fail_arch;
+    }
+    break;
+
+  case bfd_arch_powerpc:
+    switch(bfd_info->mach) {
+    case bfd_mach_ppc:
+      bin->arch = Binary::ARCH_PPC;
+      bin->bits = 32;
+      break;
+    case bfd_mach_ppc64:
+      bin->arch = Binary::ARCH_PPC;
+      bin->bits = 64;
+      break;
+    default:
+      goto fail_arch;
+    }
+    break;
+
   default:
+fail_arch:
     print_err("unsupported architecture (%s)", bfd_info->printable_name);
     goto fail;
   }
