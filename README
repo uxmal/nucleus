@@ -7,10 +7,8 @@ Requirements:
 
 Platform:
   - Tested on Ubuntu 15.10 and 16.04
-
-On these platforms you can install the required libraries by executing:
-  make setup
-
+  On these platforms you can install the required libraries by executing:
+    make setup
 
 Suggested usage:
   make
