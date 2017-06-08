@@ -24,11 +24,11 @@ const char *binary_types_descr[][2] = {
 
 const char *binary_arch_descr[][2] = {
   {"auto"    , "Try to automatically determine architecture (default)"},
-  {"aarch64" , "aarch64"},
-  {"arm"     , "arm"},
-  {"mips"    , "mips"},
-  {"ppc"     , "ppc: Specify ppc-32 or ppc-64 (default ppc-64)"},
   {"x86"     , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
+  {"aarch64" , "aarch64 (experimental)"},
+  {"arm"     , "arm (experimental)"},
+  {"mips"    , "mips (experimental)"},
+  {"ppc"     , "ppc: Specify ppc-32 or ppc-64 (default ppc-64, experimental)"},
   {NULL      , NULL}
 };
 
@@ -328,7 +328,7 @@ load_binary_bfd(std::string &fname, Binary *bin, Binary::BinaryType type)
 
   default:
 fail_arch:
-    print_err("unsupported architecture (%s)", bfd_info->printable_name);
+    print_err("unsupported architecture (%s, [%u, %u])", bfd_info->printable_name, bfd_info->arch, bfd_info->mach);
     goto fail;
   }
 

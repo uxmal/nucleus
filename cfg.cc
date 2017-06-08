@@ -73,7 +73,7 @@ CFG::analyze_addrtaken()
     analyze_addrtaken_x86();
     break;
   default:
-    verbose(1, "address-taken analysis not supported for %s", this->binary->arch_str.c_str());
+    print_warn("address-taken analysis not yet supported for %s", this->binary->arch_str.c_str());
     break;
   }
 
@@ -246,7 +246,7 @@ CFG::find_switches()
     find_switches_x86();
     break;
   default:
-    verbose(1, "switch analysis not supported for %s", this->binary->arch_str.c_str());
+    print_warn("switch analysis not yet supported for %s", this->binary->arch_str.c_str());
     break;
   }
 
