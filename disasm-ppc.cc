@@ -285,6 +285,7 @@ nucleus_disasm_bb_ppc(Binary *bin, DisasmSection *dis, BB *bb)
     }
 
     ins = &bb->insns.back();
+    ins->id         = cs_ins->id;
     ins->start      = cs_ins->address;
     ins->size       = cs_ins->size;
     ins->mnem       = std::string(cs_ins->mnemonic);

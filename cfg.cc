@@ -35,9 +35,72 @@ CFG::print_function_summaries(FILE *out)
 
 
 void
+CFG::mark_addrtaken(uint64_t addr)
+{
+  BB *cc;
+
+  if (this->start2bb.count(addr)) {
+    cc = this->start2bb[addr];
+    if (!cc->addrtaken) {
+      cc->addrtaken = true;
+      verbose(3, "marking addrtaken bb@0x%016jx", cc->start);
+    }
+  }
+}
+
+
+void
+CFG::analyze_addrtaken_ppc()
+{
+  BB *bb;
+
+  /* Instructions can get reordered, so we emulate the ISA subset relevant for the patterns below,
+   * clearing the intermediate register values with with -1 if the result is irrelevant or undefined. */
+  int64_t registers[32];
+
+  for(auto &kv: this->start2bb) {
+    bb = kv.second;
+    for(auto &ins: bb->insns) {
+      if(ins.operands.size() < 2) {
+        continue;
+      }
+      /* Pattern #1 (32-bit)
+       * Load the address from its word halves. Following variants are supported:
+       * - Using addis/addi (gcc):
+       *     lis    rN, .L@ha
+       *     addi   rN, rN, L@l
+       * - Using addis/ori:
+       *     lis    rN, .L@ha
+       *     ori    rN, rN, .L@l */
+      if(ins.id == PPC_INS_LIS) {
+        int64_t dst = ins.operands[0].ppc_value.reg - PPC_REG_R0;
+        int64_t imm = ins.operands[1].ppc_value.imm;
+        assert(dst < 32);
+        registers[dst] = imm << 16;
+      }
+      else if(ins.id == PPC_INS_ADDI || ins.id == PPC_INS_ORI) {
+        int64_t lhs = ins.operands[1].ppc_value.reg - PPC_REG_R0;
+        int64_t rhs = ins.operands[2].ppc_value.imm;
+        assert(lhs < 32);
+        if (registers[lhs] != -1) {
+          mark_addrtaken(registers[lhs] | rhs);
+        }
+      }
+      else if(ins.operands[0].type == Operand::OP_TYPE_REG
+           && ins.operands[0].ppc_value.reg >= PPC_REG_R0
+           && ins.operands[0].ppc_value.reg <= PPC_REG_R31) {
+        int64_t dst = ins.operands[0].ppc_value.reg - PPC_REG_R0;
+        registers[dst] = -1;
+      }
+    }
+  }
+}
+
+
+void
 CFG::analyze_addrtaken_x86()
 {
-  BB *bb, *cc;
+  BB *bb;
   Operand *op_src, *op_dst;
 
   for(auto &kv: this->start2bb) {
@@ -50,13 +113,7 @@ CFG::analyze_addrtaken_x86()
       op_src = &ins.operands[1];
       if(((op_dst->type == Operand::OP_TYPE_REG) || (op_dst->type == Operand::OP_TYPE_MEM))
          && (op_src->type == Operand::OP_TYPE_IMM)) {
-        if(this->start2bb.count(op_src->x86_value.imm)) {
-          cc = this->start2bb[op_src->x86_value.imm];
-          if(!cc->addrtaken) {
-            cc->addrtaken = true;
-            verbose(3, "marking addrtaken bb@0x%016jx", cc->start);
-          }
-        }
+        mark_addrtaken(op_src->x86_value.imm);
       }
     }
   }
@@ -69,6 +126,9 @@ CFG::analyze_addrtaken()
   verbose(1, "starting address-taken analysis");
 
   switch(this->binary->arch) {
+  case Binary::ARCH_PPC:
+    analyze_addrtaken_ppc();
+    break;
   case Binary::ARCH_X86:
     analyze_addrtaken_x86();
     break;
