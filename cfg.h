@@ -39,6 +39,7 @@ private:
 
   /* pass: switch detection */
   void mark_jmptab_as_data   (uint64_t start, uint64_t end);
+  void find_switches_ppc     ();
   void find_switches_x86     ();
   void find_switches         ();
 

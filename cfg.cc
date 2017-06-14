@@ -163,6 +163,132 @@ CFG::mark_jmptab_as_data(uint64_t start, uint64_t end)
 
 
 void
+CFG::find_switches_ppc()
+{
+  BB *bb, *cc;
+  Edge *conflict_edge;
+  Section *target_sec;
+  int scale;
+  unsigned offset;
+  uint64_t jmptab_addr, jmptab_idx, jmptab_end, case_addr;
+  uint32_t *jmptab32;
+  uint64_t *jmptab64;
+
+  /* Instructions can get reordered, so we emulate the ISA subset relevant for the patterns below,
+   * clearing the intermediate register values with with -1 if the result is irrelevant or undefined. */
+  int64_t registers[32];
+
+  /* Assume the jump-table entries are the same width as the GPRs */
+  scale = this->binary->bits / 8;
+
+  for(auto &kv: this->start2bb) {
+    bb = kv.second;
+    jmptab_addr = 0;
+    target_sec  = NULL;
+    /* If this BB ends in an indirect jmp, scan the BB for what looks like
+     * instructions loading a target from a jump table */
+    if(bb->insns.back().edge_type() == Edge::EDGE_TYPE_JMP_INDIRECT) {
+      target_sec = bb->section;
+      for(auto &ins: bb->insns) {
+        if(ins.operands.size() < 2) {
+          continue;
+        }
+        /* Pattern #1 (32-bit)
+         * Load the address from its word halves. Following variants are supported:
+         * - Using addis/addi (gcc):
+         *     lis    rN, .L@ha
+         *     addi   rN, rN, L@l
+         * - Using addis/ori:
+         *     lis    rN, .L@ha
+         *     ori    rN, rN, .L@l */
+        if(ins.id == PPC_INS_LIS) {
+          int64_t dst = ins.operands[0].ppc_value.reg - PPC_REG_R0;
+          int64_t imm = ins.operands[1].ppc_value.imm;
+          assert(dst < 32);
+          registers[dst] = imm << 16;
+        }
+        else if(ins.id == PPC_INS_ADDI || ins.id == PPC_INS_ORI) {
+          int64_t lhs = ins.operands[1].ppc_value.reg - PPC_REG_R0;
+          int64_t rhs = ins.operands[2].ppc_value.imm;
+          assert(lhs < 32);
+          if (registers[lhs] != -1) {
+            jmptab_addr = (uint64_t)(registers[lhs] | rhs);
+            break;
+          }
+        }
+        else if(ins.operands[0].type == Operand::OP_TYPE_REG
+             && ins.operands[0].ppc_value.reg >= PPC_REG_R0
+             && ins.operands[0].ppc_value.reg <= PPC_REG_R31) {
+          int64_t dst = ins.operands[0].ppc_value.reg - PPC_REG_R0;
+          registers[dst] = -1;
+        }
+      }
+    }
+
+    if(jmptab_addr) {
+      jmptab_end = 0;
+      for(auto &sec: this->binary->sections) {
+        if(sec.contains(jmptab_addr)) {
+          verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)",
+                  jmptab_addr, bb->insns.back().start);
+          jmptab_idx = jmptab_addr-sec.vma;
+          jmptab_end = jmptab_addr;
+          jmptab32 = (uint32_t*)&sec.bytes[jmptab_idx];
+          jmptab64 = (uint64_t*)&sec.bytes[jmptab_idx];
+          while(1) {
+            if((jmptab_idx+scale) >= sec.size) break;
+            jmptab_end += scale;
+            jmptab_idx += scale;
+            switch(scale) {
+            case 4:
+              case_addr = (*jmptab32++);
+              break;
+            case 8:
+              case_addr = (*jmptab64++);
+              break;
+            default:
+              print_warn("Unexpected scale factor in memory operand: %d", scale);
+              case_addr = 0;
+              break;
+            }
+            if(!case_addr) break;
+            if(!target_sec->contains(case_addr)) {
+              break;
+            } else {
+              cc = this->get_bb(case_addr, &offset);
+              if(!cc) break;
+              conflict_edge = NULL;
+              for(auto &e: cc->ancestors) {
+                if(e.is_switch) {
+                  conflict_edge = &e;
+                  break;
+                }
+              }
+              if(conflict_edge && (conflict_edge->jmptab <= jmptab_addr)) {
+                verbose(3, "removing switch edge 0x%016jx -> 0x%016jx (detected overlapping jump table or case)",
+                        conflict_edge->src->insns.back().start, case_addr);
+                unlink_edge(conflict_edge->src, cc);
+                conflict_edge = NULL;
+              }
+              if(!conflict_edge) {
+                verbose(3, "adding switch edge 0x%016jx -> 0x%016jx", bb->insns.back().start, case_addr);
+                link_bbs(Edge::EDGE_TYPE_JMP_INDIRECT, bb, case_addr, jmptab_addr);
+              }
+            }
+          }
+          break;
+        }
+      }
+
+      if(jmptab_addr && jmptab_end) {
+        mark_jmptab_as_data(jmptab_addr, jmptab_end);
+      }
+    }
+  }
+}
+
+
+void
 CFG::find_switches_x86()
 {
   BB *bb, *cc;
@@ -302,6 +428,9 @@ CFG::find_switches()
   verbose(1, "starting switch analysis");
 
   switch(this->binary->arch) {
+  case Binary::ARCH_PPC:
+    find_switches_ppc();
+    break;
   case Binary::ARCH_X86:
     find_switches_x86();
     break;

@@ -109,6 +109,7 @@ is_cs_unconditional_jmp_ins(cs_insn *ins)
   switch(ins->id) {
   case PPC_INS_B:
   case PPC_INS_BA:
+  case PPC_INS_BCTR:
     return 1;
   case PPC_INS_BCCTR:
     assert(ins->detail->ppc.op_count >= 2);
@@ -119,7 +120,7 @@ is_cs_unconditional_jmp_ins(cs_insn *ins)
     if (bo == 20 && bi == 0) {
       return 1;
     }
-    return 1;
+    return 0;
   default:
     return 0;
   }
@@ -174,6 +175,21 @@ is_cs_privileged_ins(cs_insn *ins)
 }
 
 
+static int
+is_cs_indirect_ins(cs_insn *ins)
+{
+  switch(ins->id) {
+  case PPC_INS_BCTR:
+  case PPC_INS_BCTRL:
+  case PPC_INS_BCCTR:
+  case PPC_INS_BCCTRL:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+
 static uint8_t
 cs_to_nucleus_op_type(ppc_op_type op)
 {
@@ -195,7 +211,7 @@ cs_to_nucleus_op_type(ppc_op_type op)
 int
 nucleus_disasm_bb_ppc(Binary *bin, DisasmSection *dis, BB *bb)
 {
-  int init, ret, jmp, cflow, cond, call, nop, only_nop, priv, trap, ndisassembled;
+  int init, ret, jmp, cflow, indir, cond, call, nop, only_nop, priv, trap, ndisassembled;
   csh cs_dis;
   cs_mode cs_mode_flags;
   cs_insn *cs_ins;
@@ -265,6 +281,7 @@ nucleus_disasm_bb_ppc(Binary *bin, DisasmSection *dis, BB *bb)
     cflow = is_cs_cflow_ins(cs_ins);
     call  = is_cs_call_ins(cs_ins);
     priv  = is_cs_privileged_ins(cs_ins);
+    indir = is_cs_indirect_ins(cs_ins);
 
     if(!ndisassembled && nop) only_nop = 1; /* group nop instructions together */
     if(!only_nop && nop) break;
@@ -298,6 +315,7 @@ nucleus_disasm_bb_ppc(Binary *bin, DisasmSection *dis, BB *bb)
     if(cond)  ins->flags |= Instruction::INS_FLAG_COND;
     if(cflow) ins->flags |= Instruction::INS_FLAG_CFLOW;
     if(call)  ins->flags |= Instruction::INS_FLAG_CALL;
+    if(indir) ins->flags |= Instruction::INS_FLAG_INDIRECT;
 
     for(i = 0; i < cs_ins->detail->ppc.op_count; i++) {
       cs_op = &cs_ins->detail->ppc.operands[i];
@@ -308,11 +326,9 @@ nucleus_disasm_bb_ppc(Binary *bin, DisasmSection *dis, BB *bb)
         op->ppc_value.imm = cs_op->imm;
       } else if(op->type == Operand::OP_TYPE_REG) {
         op->ppc_value.reg = (ppc_reg)cs_op->reg;
-        if(cflow) ins->flags |= Instruction::INS_FLAG_INDIRECT;
       } else if(op->type == Operand::OP_TYPE_MEM) {
         op->ppc_value.mem.base    = cs_op->mem.base;
         op->ppc_value.mem.disp    = cs_op->mem.disp;
-        if(cflow) ins->flags |= Instruction::INS_FLAG_INDIRECT;
       }
     }
 
