@@ -340,8 +340,8 @@ nucleus_disasm_bb_ppc(Binary *bin, DisasmSection *dis, BB *bb)
       } else if(op->type == Operand::OP_TYPE_REG) {
         op->ppc_value.reg = (ppc_reg)cs_op->reg;
       } else if(op->type == Operand::OP_TYPE_MEM) {
-        op->ppc_value.mem.base    = cs_op->mem.base;
-        op->ppc_value.mem.disp    = cs_op->mem.disp;
+        op->ppc_value.mem.base = cs_op->mem.base;
+        op->ppc_value.mem.disp = cs_op->mem.disp;
       }
     }
 
@@ -352,6 +352,14 @@ nucleus_disasm_bb_ppc(Binary *bin, DisasmSection *dis, BB *bb)
           ins->target = cs_op->imm;
         }
       }
+    }
+
+    /* XXX: Some relocations entries point to symbols in sections
+     * that are ignored by Nucleus, e.g. calls to external functions.
+     * We ignore such calls directly at disasm level. */
+    if(call && ins->target == ins->start) {
+      ins->flags &= ~Instruction::INS_FLAG_CALL;
+      ins->flags &= ~Instruction::INS_FLAG_CFLOW;
     }
 
     if(cflow) {

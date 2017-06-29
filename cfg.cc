@@ -14,6 +14,7 @@
 #include "cfg.h"
 #include "log.h"
 #include "options.h"
+#include "endian.h"
 
 
 void
@@ -236,15 +237,15 @@ CFG::find_switches_ppc()
           jmptab32 = (uint32_t*)&sec.bytes[jmptab_idx];
           jmptab64 = (uint64_t*)&sec.bytes[jmptab_idx];
           while(1) {
-            if((jmptab_idx+scale) >= sec.size) break;
+            if((jmptab_idx+scale) > sec.size) break;
             jmptab_end += scale;
             jmptab_idx += scale;
             switch(scale) {
             case 4:
-              case_addr = (*jmptab32++);
+              case_addr = uint32_t(read_be_i32(jmptab32++) + jmptab_addr);
               break;
             case 8:
-              case_addr = (*jmptab64++);
+              case_addr = uint64_t(read_be_i64(jmptab64++) + jmptab_addr);
               break;
             default:
               print_warn("Unexpected scale factor in memory operand: %d", scale);
