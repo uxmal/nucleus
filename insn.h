@@ -101,13 +101,14 @@ public:
     INS_FLAG_NOP      = 0x040
   };
 
-  Instruction() : start(0), size(0), addr_size(0), target(0), flags(0), invalid(false), privileged(false), trap(false) {}
-  Instruction(const Instruction &i) : start(i.start), size(i.size), addr_size(i.addr_size), target(i.target), flags(i.flags), 
+  Instruction() : id(0), start(0), size(0), addr_size(0), target(0), flags(0), invalid(false), privileged(false), trap(false) {}
+  Instruction(const Instruction &i) : id(i.id), start(i.start), size(i.size), addr_size(i.addr_size), target(i.target), flags(i.flags),
                                       mnem(i.mnem), op_str(i.op_str), operands(i.operands), invalid(i.invalid), privileged(i.privileged), trap(i.trap) {}
 
   void           print     (FILE *out);
   Edge::EdgeType edge_type ();
 
+  unsigned int         id;
   uint64_t             start;
   uint8_t              size;
   uint8_t              addr_size;

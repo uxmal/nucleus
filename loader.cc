@@ -171,6 +171,95 @@ cleanup:
 
 
 int
+load_dynrelocs_bfd(bfd *bfd_h, Binary *bin)
+{
+  int ret;
+  long nsyms, nrels, relsize, i;
+  unsigned int symsize;
+  asymbol **bfd_symtab = nullptr;
+  arelent **bfd_relocs = nullptr;
+  reloc_howto_type *bfd_howto;
+
+  bfd_symtab = nullptr;
+  bfd_relocs = nullptr;
+  relsize = bfd_get_dynamic_reloc_upper_bound(bfd_h);
+  if(relsize == 0) {
+    return 0;
+  }
+  if(relsize < 0) {
+    print_err("failed to read dynamic relocations size (%s)", bfd_errmsg(bfd_get_error()));
+    goto fail;
+  }
+  nsyms = bfd_read_minisymbols(bfd_h, TRUE, (void**)&bfd_symtab, &symsize);
+  if(nsyms < 0) {
+    print_err("failed to read symtab (%s)", bfd_errmsg(bfd_get_error()));
+    goto fail;
+  }
+
+  bfd_relocs = (arelent**)malloc(relsize);
+  nrels = bfd_canonicalize_dynamic_reloc(bfd_h, bfd_relocs, bfd_symtab);
+  if(nrels < 0) {
+    print_err("failed to read dynamic relocations (%s)", bfd_errmsg(bfd_get_error()));
+    goto fail;
+  }
+  /* Apply relocations */
+  for(i = 0; i < nrels; i++) {
+    arelent *bfd_reloc = bfd_relocs[i];
+    asymbol *bfd_symbol = *(bfd_reloc->sym_ptr_ptr);
+    bfd_howto = bfd_reloc->howto;
+
+    for(const auto& sec : bin->sections) {
+      /* Apply relocation to data of any executable section within range */
+      size_t bytesize = (bfd_howto->bitsize / 8);
+      if(bfd_reloc->address < sec.vma ||
+         bfd_reloc->address > sec.vma + sec.size - bytesize ||
+         sec.type != Section::SEC_TYPE_CODE) {
+        continue;
+      }
+      /* Compute relocation value */
+      bfd_vma relocation = 0;
+      if(bfd_is_com_section(bfd_symbol->section)) {
+        relocation = bfd_symbol->value;
+      }
+      relocation += bfd_reloc->addend;
+      relocation >>= (bfd_vma)bfd_howto->rightshift;
+      relocation <<= (bfd_vma)bfd_howto->bitpos;
+
+      /* Patch data */
+#define APPLY_RELOC(x) \
+  ((x & ~bfd_howto->dst_mask) | (((x & bfd_howto->src_mask) + relocation) & bfd_howto->dst_mask))
+
+      bfd_vma data_offset = bfd_reloc->address * bfd_octets_per_byte(bfd_h);
+      bfd_byte* data = sec.bytes + (data_offset - sec.vma);
+
+      switch (bfd_howto->size) {
+      case 0: bfd_put_8 (bfd_h, APPLY_RELOC(bfd_get_8 (bfd_h, data)), data); break;
+      case 1: bfd_put_16(bfd_h, APPLY_RELOC(bfd_get_16(bfd_h, data)), data); break;
+      case 2: bfd_put_32(bfd_h, APPLY_RELOC(bfd_get_32(bfd_h, data)), data); break;
+      case 4: bfd_put_64(bfd_h, APPLY_RELOC(bfd_get_64(bfd_h, data)), data); break;
+      default:
+        print_err("unsupported relocation size (%d)", bfd_howto->size);
+        goto fail;
+      }
+#undef APPLY_RELOC
+    }
+  }
+
+  ret = 0;
+  goto cleanup;
+
+fail:
+  ret = -1;
+
+cleanup:
+  if(bfd_symtab) free(bfd_symtab);
+  if(bfd_relocs) free(bfd_relocs);
+
+  return ret;
+}
+
+
+int
 load_sections_bfd(bfd *bfd_h, Binary *bin)
 {
   int bfd_flags, sectype;
@@ -337,6 +426,11 @@ fail_arch:
   load_dynsym_bfd(bfd_h, bin);
 
   if(load_sections_bfd(bfd_h, bin) < 0) goto fail;
+
+  /* Apply relocations if necessary */
+  if (bin->arch == Binary::ARCH_PPC) {
+    load_dynrelocs_bfd(bfd_h, bin);
+  }
 
   ret = 0;
   goto cleanup;

@@ -252,7 +252,7 @@ nucleus_disasm_section(Binary *bin, DisasmSection *dis)
         }
         dis->BBs.push_back(BB(mutants[i]));
         Q.push(&dis->BBs.back());
-      } 
+      }
     }
   }
 
