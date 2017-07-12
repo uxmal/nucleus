@@ -22,7 +22,7 @@ public:
   };
 
   union AArch64Value {
-    AArch64Value() { reg = (arm64_reg)0; mem.base = 0; mem.index = 0; mem.disp = 0; }
+    AArch64Value() { reg = ARM64_REG_INVALID; imm = 0; fp = 0; mem.base = 0; mem.index = 0; mem.disp = 0; }
     AArch64Value(const AArch64Value &v) { mem.base = v.mem.base;
       mem.index = v.mem.index; mem.disp = v.mem.disp; }
 
@@ -33,7 +33,7 @@ public:
   };
 
   union ARMValue {
-    ARMValue() { reg = (arm_reg)0; mem.base = 0; mem.index = 0; mem.scale = 0; mem.disp = 0; }
+    ARMValue() { reg = ARM_REG_INVALID; imm = 0; fp = 0; mem.base = 0; mem.index = 0; mem.scale = 0; mem.disp = 0; }
     ARMValue(const ARMValue &v) { mem.base = v.mem.base; mem.index = v.mem.index;
       mem.scale = v.mem.scale; mem.disp = v.mem.disp; }
 
@@ -44,7 +44,7 @@ public:
   };
 
   union MIPSValue {
-    MIPSValue() { reg = (mips_reg)0; mem.base = 0; mem.disp = 0; }
+    MIPSValue() { reg = MIPS_REG_INVALID; imm = 0; fp = 0; mem.base = 0; mem.disp = 0; }
     MIPSValue(const MIPSValue &v) { mem.base = v.mem.base; mem.disp = v.mem.disp; }
 
     mips_reg    reg;
@@ -54,7 +54,7 @@ public:
   };
 
   union PPCValue {
-    PPCValue() { reg = (ppc_reg)0; mem.base = 0; mem.disp = 0; }
+    PPCValue() { reg = PPC_REG_INVALID; imm = 0; mem.base = 0; mem.disp = 0; }
     PPCValue(const PPCValue &v) { mem.base = v.mem.base; mem.disp = v.mem.disp; }
 
     ppc_reg    reg;
@@ -63,7 +63,7 @@ public:
   };
 
   union X86Value {
-    X86Value() { reg = (x86_reg)0; mem.segment = 0; mem.base = 0; mem.index = 0; mem.scale = 0; mem.disp = 0; }
+    X86Value() { reg = X86_REG_INVALID; imm = 0; fp = 0; mem.segment = 0; mem.base = 0; mem.index = 0; mem.scale = 0; mem.disp = 0; }
     X86Value(const X86Value &v) { mem.segment = v.mem.segment; mem.base = v.mem.base;
       mem.index = v.mem.index; mem.scale = v.mem.scale;
       mem.disp = v.mem.disp; }
