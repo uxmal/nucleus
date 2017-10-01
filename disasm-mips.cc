@@ -28,24 +28,32 @@ is_cs_trap_ins(cs_insn *ins)
 
 
 static int
-is_cs_cflow_group(uint8_t g)
-{
-  return (g == CS_GRP_JUMP) || (g == CS_GRP_CALL) || (g == CS_GRP_RET) || (g == CS_GRP_IRET);
-}
-
-
-static int
 is_cs_cflow_ins(cs_insn *ins)
 {
-  size_t i;
+  /* XXX: Capstone does not provide information for all generic groups
+   * for mips instructions, unlike x86, so we have to do it manually.
+   * Once this is implemented, it will suffice to check for the following groups:
+   * CS_GRP_JUMP, CS_GRP_CALL, CS_GRP_RET, CS_GRP_IRET */
 
-  for(i = 0; i < ins->detail->groups_count; i++) {
-    if(is_cs_cflow_group(ins->detail->groups[i])) {
-      return 1;
-    }
+  switch(ins->id) {
+  case MIPS_INS_J:
+  case MIPS_INS_JR:
+  case MIPS_INS_B:
+  case MIPS_INS_BAL:
+  case MIPS_INS_JAL:
+  case MIPS_INS_JALR:
+  case MIPS_INS_BEQ:
+  case MIPS_INS_BNE:
+  case MIPS_INS_BGTZ:
+  case MIPS_INS_BGEZ:
+  case MIPS_INS_BNEZ:
+  case MIPS_INS_BEQZ:
+  case MIPS_INS_BLEZ:
+  case MIPS_INS_BLTZ:
+    return 1;
+  default:
+    return 0;
   }
-
-  return 0;
 }
 
 
@@ -84,6 +92,11 @@ is_cs_unconditional_jmp_ins(cs_insn *ins)
   case MIPS_INS_B:
   case MIPS_INS_J:
     return 1;
+  case MIPS_INS_JR:
+    if (ins->detail->mips.operands[0].reg != MIPS_REG_RA) {
+      return 1;
+    }
+    return 0;
   default:
     return 0;
   }
@@ -120,6 +133,25 @@ is_cs_privileged_ins(cs_insn *ins)
 }
 
 
+static int
+is_cs_indirect_ins(cs_insn *ins)
+{
+  /* jr rN */
+  if(ins->id == MIPS_INS_JR
+     && ins->detail->mips.operands[0].type == MIPS_OP_REG
+     && ins->detail->mips.operands[0].reg != MIPS_REG_RA) {
+    return 1;
+  }
+
+  /* jalr rN */
+  if(ins->id == MIPS_INS_JALR) {
+    return 1;
+  }
+
+  return 0;
+}
+
+
 static uint8_t
 cs_to_nucleus_op_type(mips_op_type op)
 {
@@ -140,7 +172,7 @@ cs_to_nucleus_op_type(mips_op_type op)
 int
 nucleus_disasm_bb_mips(Binary *bin, DisasmSection *dis, BB *bb)
 {
-  int init, ret, jmp, cflow, cond, call, nop, only_nop, priv, trap, ndisassembled;
+  int init, ret, jmp, cflow, indir, cond, call, nop, only_nop, priv, trap, ndisassembled;
   csh cs_dis;
   cs_mode cs_mode_flags;
   cs_insn *cs_ins;
@@ -148,11 +180,12 @@ nucleus_disasm_bb_mips(Binary *bin, DisasmSection *dis, BB *bb)
   const uint8_t *pc;
   uint64_t pc_addr, offset;
   size_t i, j, n;
-  Instruction *ins;
+  Instruction *ins, *last_cflow;
   Operand *op;
 
   init   = 0;
-  cs_ins = NULL;
+  cs_ins = nullptr;
+  last_cflow = nullptr;
 
   switch(bin->bits) {
   case 64:
@@ -213,10 +246,11 @@ nucleus_disasm_bb_mips(Binary *bin, DisasmSection *dis, BB *bb)
     cflow = is_cs_cflow_ins(cs_ins);
     call  = is_cs_call_ins(cs_ins);
     priv  = is_cs_privileged_ins(cs_ins);
+    indir = is_cs_indirect_ins(cs_ins);
 
     if(!ndisassembled && nop) only_nop = 1; /* group nop instructions together */
-    if(!only_nop && nop) break;
-    if(only_nop && !nop) break;
+    if(!last_cflow && !only_nop && nop) break;
+    if(!last_cflow && only_nop && !nop) break;
 
     ndisassembled++;
 
@@ -233,6 +267,7 @@ nucleus_disasm_bb_mips(Binary *bin, DisasmSection *dis, BB *bb)
     }
 
     ins = &bb->insns.back();
+    ins->id         = cs_ins->id;
     ins->start      = cs_ins->address;
     ins->size       = cs_ins->size;
     ins->mnem       = std::string(cs_ins->mnemonic);
@@ -245,6 +280,7 @@ nucleus_disasm_bb_mips(Binary *bin, DisasmSection *dis, BB *bb)
     if(cond)  ins->flags |= Instruction::INS_FLAG_COND;
     if(cflow) ins->flags |= Instruction::INS_FLAG_CFLOW;
     if(call)  ins->flags |= Instruction::INS_FLAG_CALL;
+    if(indir) ins->flags |= Instruction::INS_FLAG_INDIRECT;
 
     for(i = 0; i < cs_ins->detail->mips.op_count; i++) {
       cs_op = &cs_ins->detail->mips.operands[i];
@@ -255,28 +291,31 @@ nucleus_disasm_bb_mips(Binary *bin, DisasmSection *dis, BB *bb)
         op->mips_value.imm = cs_op->imm;
       } else if(op->type == Operand::OP_TYPE_REG) {
         op->mips_value.reg = (mips_reg)cs_op->reg;
-        if(cflow) ins->flags |= Instruction::INS_FLAG_INDIRECT;
       } else if(op->type == Operand::OP_TYPE_MEM) {
-        op->mips_value.mem.base    = cs_op->mem.base;
-        op->mips_value.mem.disp    = cs_op->mem.disp;
+        op->mips_value.mem.base = cs_op->mem.base;
+        op->mips_value.mem.disp = cs_op->mem.disp;
         if(cflow) ins->flags |= Instruction::INS_FLAG_INDIRECT;
-      }
-    }
-
-    for(i = 0; i < cs_ins->detail->groups_count; i++) {
-      if(is_cs_cflow_group(cs_ins->detail->groups[i])) {
-        for(j = 0; j < cs_ins->detail->mips.op_count; j++) {
-          cs_op = &cs_ins->detail->mips.operands[j];
-          if(cs_op->type == MIPS_OP_IMM) {
-            ins->target = cs_op->imm;
-          }
-        }
       }
     }
 
     if(cflow) {
-      /* end of basic block */
+      for(j = 0; j < cs_ins->detail->mips.op_count; j++) {
+        cs_op = &cs_ins->detail->mips.operands[j];
+        if(cs_op->type == MIPS_OP_IMM) {
+          ins->target = cs_op->imm;
+        }
+      }
+    }
+
+    /* end of basic block occurs after delay slot of cflow instructions */
+    if(last_cflow) {
+      ins->flags = last_cflow->flags;
+      ins->target = last_cflow->target;
+      last_cflow->flags = 0;
       break;
+    }
+    if(cflow) {
+      last_cflow = ins;
     }
   }
 
@@ -288,10 +327,10 @@ nucleus_disasm_bb_mips(Binary *bin, DisasmSection *dis, BB *bb)
   ret = ndisassembled;
   goto cleanup;
 
-  fail:
+fail:
   ret = -1;
 
-  cleanup:
+cleanup:
   if(cs_ins) {
     cs_free(cs_ins, 1);
   }
