@@ -158,8 +158,6 @@ is_cs_conditional_cflow_ins(cs_insn *ins)
       return 0;
     }
     return 1;
-  case PPC_INS_BL:
-  case PPC_INS_BLA:
   default:
     return 0;
   }

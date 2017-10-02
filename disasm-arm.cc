@@ -28,27 +28,6 @@ is_cs_trap_ins(cs_insn *ins)
 
 
 static int
-is_cs_cflow_group(uint8_t g)
-{
-  return (g == CS_GRP_JUMP) || (g == CS_GRP_CALL) || (g == CS_GRP_RET) || (g == CS_GRP_IRET);
-}
-
-
-static int
-is_cs_cflow_ins(cs_insn *ins)
-{
-  size_t i;
-
-  for(i = 0; i < ins->detail->groups_count; i++) {
-    if(is_cs_cflow_group(ins->detail->groups[i])) {
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-static int
 is_cs_call_ins(cs_insn *ins)
 {
   switch(ins->id) {
@@ -100,15 +79,29 @@ is_cs_ret_ins(cs_insn *ins)
 static int
 is_cs_unconditional_jmp_ins(cs_insn *ins)
 {
-  switch(ins->id) {
-  case ARM_INS_B:
-    if (ins->detail->arm.cc == ARM_CC_AL) {
-      return 1;
-    }
-    return 0;
-  default:
-    return 0;
+  /* b rN */
+  if(ins->id == ARM_INS_B
+     && ins->detail->arm.cc == ARM_CC_AL) {
+    return 1;
   }
+
+  /* mov pc, rN */
+  if(ins->id == ARM_INS_MOV
+     && ins->detail->arm.operands[0].type == ARM_OP_REG
+     && ins->detail->arm.operands[0].reg == ARM_REG_PC
+     && ins->detail->arm.operands[1].type == ARM_OP_REG
+     && ins->detail->arm.operands[1].reg != ARM_REG_LR) {
+    return 1;
+  }
+
+  /* ldrls pc, {...} */
+  if(ins->id == ARM_INS_LDR
+     && ins->detail->arm.operands[0].type == ARM_OP_REG
+     && ins->detail->arm.operands[0].reg == ARM_REG_PC) {
+    return 1;
+  }
+
+  return 0;
 }
 
 
@@ -120,6 +113,61 @@ is_cs_conditional_cflow_ins(cs_insn *ins)
   case ARM_INS_BL:
   case ARM_INS_BLX:
     if (ins->detail->arm.cc != ARM_CC_AL) {
+      return 1;
+    }
+    return 0;
+  default:
+    return 0;
+  }
+}
+
+
+static int
+is_cs_cflow_ins(cs_insn *ins)
+{
+  size_t i;
+
+  /* XXX: Capstone does not provide information for all generic groups
+   * for arm instructions, unlike x86, so we have to do it manually.
+   * Once this is implemented, it will suffice to check for the following groups:
+   * CS_GRP_JUMP, CS_GRP_CALL, CS_GRP_RET, CS_GRP_IRET */
+
+  if(is_cs_unconditional_jmp_ins(ins) ||
+     is_cs_conditional_cflow_ins(ins) ||
+     is_cs_call_ins(ins) ||
+     is_cs_ret_ins(ins)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+
+static int
+is_cs_indirect_ins(cs_insn *ins)
+{
+  /* mov pc, rN */
+  if(ins->id == ARM_INS_MOV
+     && ins->detail->arm.operands[0].type == ARM_OP_REG
+     && ins->detail->arm.operands[0].reg == ARM_REG_PC
+     && ins->detail->arm.operands[1].type == ARM_OP_REG
+     && ins->detail->arm.operands[1].reg != ARM_REG_LR) {
+    return 1;
+  }
+
+  /* ldrls pc, {...} */
+  if(ins->id == ARM_INS_LDR
+     && ins->detail->arm.operands[0].type == ARM_OP_REG
+     && ins->detail->arm.operands[0].reg == ARM_REG_PC) {
+    return 1;
+  }
+
+  switch(ins->id) {
+  case ARM_INS_BX:
+  case ARM_INS_BLX:
+  case ARM_INS_BXJ:
+    if(ins->detail->arm.operands[0].type == ARM_OP_REG &&
+       ins->detail->arm.operands[0].reg == ARM_REG_PC) {
       return 1;
     }
     return 0;
@@ -162,7 +210,7 @@ cs_to_nucleus_op_type(arm_op_type op)
 int
 nucleus_disasm_bb_arm(Binary *bin, DisasmSection *dis, BB *bb)
 {
-  int init, ret, jmp, cflow, cond, call, nop, only_nop, priv, trap, ndisassembled;
+  int init, ret, jmp, indir, cflow, cond, call, nop, only_nop, priv, trap, ndisassembled;
   csh cs_dis;
   cs_mode cs_mode_flags;
   cs_insn *cs_ins;
@@ -229,6 +277,7 @@ nucleus_disasm_bb_arm(Binary *bin, DisasmSection *dis, BB *bb)
     cflow = is_cs_cflow_ins(cs_ins);
     call  = is_cs_call_ins(cs_ins);
     priv  = is_cs_privileged_ins(cs_ins);
+    indir = is_cs_indirect_ins(cs_ins);
 
     if(!ndisassembled && nop) only_nop = 1; /* group nop instructions together */
     if(!only_nop && nop) break;
@@ -249,6 +298,7 @@ nucleus_disasm_bb_arm(Binary *bin, DisasmSection *dis, BB *bb)
     }
 
     ins = &bb->insns.back();
+    ins->id         = cs_ins->id;
     ins->start      = cs_ins->address;
     ins->size       = cs_ins->size;
     ins->mnem       = std::string(cs_ins->mnemonic);
@@ -261,6 +311,7 @@ nucleus_disasm_bb_arm(Binary *bin, DisasmSection *dis, BB *bb)
     if(cond)  ins->flags |= Instruction::INS_FLAG_COND;
     if(cflow) ins->flags |= Instruction::INS_FLAG_CFLOW;
     if(call)  ins->flags |= Instruction::INS_FLAG_CALL;
+    if(indir) ins->flags |= Instruction::INS_FLAG_INDIRECT;
 
     for(i = 0; i < cs_ins->detail->arm.op_count; i++) {
       cs_op = &cs_ins->detail->arm.operands[i];
@@ -271,7 +322,6 @@ nucleus_disasm_bb_arm(Binary *bin, DisasmSection *dis, BB *bb)
         op->arm_value.imm = cs_op->imm;
       } else if(op->type == Operand::OP_TYPE_REG) {
         op->arm_value.reg = (arm_reg)cs_op->reg;
-        if(cflow) ins->flags |= Instruction::INS_FLAG_INDIRECT;
       } else if(op->type == Operand::OP_TYPE_FP) {
         op->arm_value.fp = cs_op->fp;
       } else if(op->type == Operand::OP_TYPE_MEM) {
@@ -283,13 +333,11 @@ nucleus_disasm_bb_arm(Binary *bin, DisasmSection *dis, BB *bb)
       }
     }
 
-    for(i = 0; i < cs_ins->detail->groups_count; i++) {
-      if(is_cs_cflow_group(cs_ins->detail->groups[i])) {
-        for(j = 0; j < cs_ins->detail->arm.op_count; j++) {
-          cs_op = &cs_ins->detail->arm.operands[j];
-          if(cs_op->type == ARM_OP_IMM) {
-            ins->target = cs_op->imm;
-          }
+    if(cflow) {
+      for(j = 0; j < cs_ins->detail->arm.op_count; j++) {
+        cs_op = &cs_ins->detail->arm.operands[j];
+        if(cs_op->type == ARM_OP_IMM) {
+          ins->target = cs_op->imm;
         }
       }
     }
