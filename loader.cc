@@ -24,11 +24,11 @@ const char *binary_types_descr[][2] = {
 
 const char *binary_arch_descr[][2] = {
   {"auto"    , "Try to automatically determine architecture (default)"},
-  {"x86"     , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
   {"aarch64" , "aarch64 (experimental)"},
   {"arm"     , "arm (experimental)"},
   {"mips"    , "mips (experimental)"},
   {"ppc"     , "ppc: Specify ppc-32 or ppc-64 (default ppc-64, experimental)"},
+  {"x86"     , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
   {NULL      , NULL}
 };
 
@@ -551,4 +551,3 @@ unload_binary(Binary *bin)
     }
   }
 }
-
