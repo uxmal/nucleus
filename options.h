@@ -24,6 +24,7 @@ struct options {
 
   struct {
     std::string ida;
+    std::string binja;
     std::string dot;
   } exports;
 

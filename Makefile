@@ -1,12 +1,12 @@
 CXX=g++
 CXXFLAGS=-Wall -std=c++11 -O2 -DNDEBUG
-LDFLAGS=-lcapstone -lbfd
+LDFLAGS=-lcapstone -lbfd-multiarch
 
-SRC=nucleus.cc bb.cc cfg.cc dataregion.cc disasm.cc edge.cc exception.cc export.cc function.cc insn.cc loader.cc log.cc options.cc strategy.cc util.cc
-OBJ=$(patsubst %.cc,obj/%.o,$(SRC))
+SRC=$(wildcard *.cc)
+OBJ=$(patsubst %.cc, obj/%.o, $(SRC))
 BIN=nucleus
 
-.PHONY: all clean
+.PHONY: all clean setup
 
 all: $(BIN)
 
@@ -20,6 +20,9 @@ obj/%.o: %.cc %.h
 
 $(BIN): $(OBJ)
 	$(CXX) $(CXXFLAGS) -o $(BIN) $(OBJ) $(LDFLAGS)
+
+setup:
+	sudo apt install binutils-multiarch-dev libcapstone-dev
 
 clean:
 	rm -f $(OBJ)

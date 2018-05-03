@@ -50,6 +50,8 @@ print_usage(char *prog)
   printf("     : export CFG to graphviz dot file\n");
   printf("  -i <file>\n");
   printf("     : export binary info to IDA Pro script\n");
+  printf("  -n <file>\n");
+  printf("     : export binary info to Binary Ninja script\n");
   printf("  -v : verbose\n");
   printf("  -w : disable warnings\n");
   printf("  -h : help\n");
@@ -63,7 +65,7 @@ int
 parse_options(int argc, char *argv[])
 {
   int i, opt;
-  char optstr[] = "vwhd:t:a:fb:Dpg:i:e:";
+  char optstr[] = "vwhd:t:a:fb:Dpg:i:n:e:";
   extern const char *binary_types_descr[][2];
   extern const char *binary_arch_descr[][2];
   std::string s;
@@ -162,6 +164,10 @@ parse_options(int argc, char *argv[])
 
     case 'i':
       options.exports.ida = std::string(optarg);
+      break;
+
+    case 'n':
+      options.exports.binja = std::string(optarg);
       break;
 
     case 'd':

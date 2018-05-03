@@ -31,10 +31,21 @@ public:
   std::map<uint64_t, BB*>  bad_bbs;
 
 private:
+  /* pass: address-taken detection */
+  void mark_addrtaken        (uint64_t addr);
+  void analyze_addrtaken_ppc ();
   void analyze_addrtaken_x86 ();
   void analyze_addrtaken     ();
+
+  /* pass: switch detection */
+  void mark_jmptab_as_data   (uint64_t start, uint64_t end);
+  void find_switches_aarch64 ();
+  void find_switches_arm     ();
+  void find_switches_mips    ();
+  void find_switches_ppc     ();
   void find_switches_x86     ();
   void find_switches         ();
+
   void expand_function       (Function *f, BB *bb);
   void find_functions        ();
   void find_entry            ();
