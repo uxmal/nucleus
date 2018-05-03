@@ -8,9 +8,9 @@ namespace Nucleus
         public bool summarize_functions;
 
         public struct path_options {
-            string real;
-            string dir;
-            string @base;
+            public string real;
+            public string dir;
+            public string @base;
         }
         public path_options nucleuspath;
 

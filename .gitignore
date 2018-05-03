@@ -6,3 +6,4 @@
 **/Debug
 *.VC.opendb
 *.VC.db
+**/.vs/

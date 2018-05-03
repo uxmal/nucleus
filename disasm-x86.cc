@@ -221,8 +221,10 @@ cs_to_nucleus_op_type(x86_op_type op)
     return Operand::OP_TYPE_IMM;
   case X86_OP_MEM:
     return Operand::OP_TYPE_MEM;
+#if CS_API_MAJOR < 4 /* X86_OP_FP does not exist in later versions */
   case X86_OP_FP:
     return Operand::OP_TYPE_FP;
+#endif
   case X86_OP_INVALID:
   default:
     return Operand::OP_TYPE_NONE;
@@ -357,7 +359,11 @@ nucleus_disasm_bb_x86(Binary *bin, DisasmSection *dis, BB *bb)
         op->x86_value.reg = cs_op->reg;
         if(cflow) ins->flags |= Instruction::INS_FLAG_INDIRECT;
       } else if(op->type == Operand::OP_TYPE_FP) {
+#if CS_API_MAJOR < 4 /* cs_op->fp does not exist in later versions */
         op->x86_value.fp = cs_op->fp;
+#else
+        op->x86_value.fp = 0;
+#endif
       } else if(op->type == Operand::OP_TYPE_MEM) {
         op->x86_value.mem.segment = cs_op->mem.segment;
         op->x86_value.mem.base    = cs_op->mem.base;

@@ -57,32 +57,29 @@ namespace Nucleus
         static int
         parse_options(string[] argv)
         {
-            /*
           int i, opt;
-          char optstr[] = "vwhd:t:a:fb:Dpg:i:e:";
-          extern const char *binary_types_descr[][2];
-          extern const char *binary_arch_descr[][2];
+          string optstr = "vwhd:t:a:fb:Dpg:i:e:";
+          //extern const char *binary_types_descr[][2];
+          //extern const char *binary_arch_descr[][2];
           string s;
 
           options.verbosity           = 0;
-          options.warnings            = 1;
-          options.only_code_sections  = 1;
+          options.warnings            = true;
+          options.only_code_sections  = true;
           options.allow_privileged    = 0;
-          options.summarize_functions = 0;
+          options.summarize_functions = false;
 
-          options.nucleuspath.real = str_realpath(string(argv[0]));
-          options.nucleuspath.dir  = str_realpath_dir(string(argv[0]));
-          options.nucleuspath.base = str_realpath_base(string(argv[0]));
+          options.nucleuspath.real = str_realpath(argv[0]);
+          options.nucleuspath.dir  = str_realpath_dir(argv[0]);
+          options.nucleuspath.@base = str_realpath_base(argv[0]);
 
-          options.binary.type     = Binary::BIN_TYPE_AUTO;
-          options.binary.arch     = Binary::ARCH_NONE;
+          options.binary.type     = Binary.BinaryType.BIN_TYPE_AUTO;
+          options.binary.arch     = Binary.BinaryArch.ARCH_NONE;
           options.binary.base_vma = 0;
 
-          options.strategy_function.score_function  = NULL;
-          options.strategy_function.mutate_function = NULL;
-          options.strategy_function.select_function = NULL;
+          options.strategy.function = null;
 
-          opterr = 0;
+          bool opterr = false;
           while((opt = getopt(argc, argv, optstr)) != -1) {
             switch(opt) {
             case 'v':
@@ -94,17 +91,17 @@ namespace Nucleus
               break;
 
             case 'e':
-              options.binary.filename = string(optarg);
+              options.binary.filename = optarg;
               break;
 
             case 't':
-              for(i = 0; binary_types_descr[i][0]; i++) {
-                if(!strcmp(optarg, binary_types_descr[i][0])) {
-                  options.binary.type = (Binary::BinaryType)i;
+              for(i = 0; binary_types_descr[i][0] != null; i++) {
+                if(optarg ==  binary_types_descr[i][0]) {
+                  options.binary.type = (Binary.BinaryType)i;
                   break;
                 }
               }
-              if(!binary_types_descr[i][0]) {
+              if(binary_types_descr[i][0] == null) {
                 Console.Write("ERROR: Unrecognized binary format '%s'\n", optarg);
                 print_usage(argv[0]);
                 return -1;
@@ -137,7 +134,7 @@ namespace Nucleus
               break;
 
             case 'b':
-              options.binary.base_vma = strtoul(optarg, NULL, 0);
+              options.binary.base_vma = Convert.ToUInt64(optarg, null, 0);
               if(!options.binary.base_vma) {
                 Console.Write("ERROR: Invalid binary base address %s\n", optarg);
                 return -1;
@@ -184,7 +181,6 @@ namespace Nucleus
             print_usage(argv[0]);
             return -1;
           }
-          */
             return 0;
         }
     }

@@ -1,11 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.168
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nucleus.cs", "Nucleus.cs.csproj", "{B48CF77A-D547-47E6-806A-D4B3929475E7}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Nucleus", "Nucleus.vcxproj", "{EC243F56-79B7-40C5-B5FD-EB869046C90C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,18 +27,11 @@ Global
 		{B48CF77A-D547-47E6-806A-D4B3929475E7}.Release|x64.Build.0 = Release|Any CPU
 		{B48CF77A-D547-47E6-806A-D4B3929475E7}.Release|x86.ActiveCfg = Release|Any CPU
 		{B48CF77A-D547-47E6-806A-D4B3929475E7}.Release|x86.Build.0 = Release|Any CPU
-		{EC243F56-79B7-40C5-B5FD-EB869046C90C}.Debug|Any CPU.ActiveCfg = Debug|Win32
-		{EC243F56-79B7-40C5-B5FD-EB869046C90C}.Debug|x64.ActiveCfg = Debug|x64
-		{EC243F56-79B7-40C5-B5FD-EB869046C90C}.Debug|x64.Build.0 = Debug|x64
-		{EC243F56-79B7-40C5-B5FD-EB869046C90C}.Debug|x86.ActiveCfg = Debug|Win32
-		{EC243F56-79B7-40C5-B5FD-EB869046C90C}.Debug|x86.Build.0 = Debug|Win32
-		{EC243F56-79B7-40C5-B5FD-EB869046C90C}.Release|Any CPU.ActiveCfg = Release|Win32
-		{EC243F56-79B7-40C5-B5FD-EB869046C90C}.Release|x64.ActiveCfg = Release|x64
-		{EC243F56-79B7-40C5-B5FD-EB869046C90C}.Release|x64.Build.0 = Release|x64
-		{EC243F56-79B7-40C5-B5FD-EB869046C90C}.Release|x86.ActiveCfg = Release|Win32
-		{EC243F56-79B7-40C5-B5FD-EB869046C90C}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2738D56F-A916-4489-822C-8A4C467902A7}
 	EndGlobalSection
 EndGlobal
