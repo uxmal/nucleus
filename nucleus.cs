@@ -27,7 +27,7 @@ namespace Nucleus
                     return 1;
                 }
 
-                Log.verbose(1, "loaded binary '%s' %s/%s (%u bits) entry@0x%016jx",
+                Log.verbose(1, "loaded binary '{0}' {1}/{2} ({3} bits) entry@{4}",
                         bin.filename,
                         bin.type_str, bin.arch_str,
                         bin.bits, bin.entry);

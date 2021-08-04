@@ -36,6 +36,18 @@ public class GetOpt
             return -1;
         }
         var arg = argv[i++];
+        if (arg.Length == 2 && arg[0] == '-' && this.argnames.TryGetValue(arg[1], out bool extraArg))
+        {
+            if (extraArg && i < argv.Length)
+            {
+                optarg = argv[i++];
+            }
+            else
+            {
+                optarg = null;
+            }
+            return arg[1];
+        }
         throw new NotImplementedException();
     }
 }

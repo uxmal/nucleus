@@ -7,13 +7,13 @@ namespace Nucleus
 
 
     public delegate double bb_score_function_t(DisasmSection sec, BB bb);
-    public delegate uint bb_mutate_function_t(DisasmSection sec, BB bb, BB[] mutants);
+    public delegate uint bb_mutate_function_t(DisasmSection sec, BB bb, ref BB[] mutants);
     public delegate int bb_select_function_t(DisasmSection sec, BB[] bb, uint n);
 
     public abstract class Strategy
     {
         public abstract double score_function(DisasmSection sec, BB bb);
-        public abstract uint mutate_function(DisasmSection sec, BB bb, BB[] mutants);
+        public abstract uint mutate_function(DisasmSection sec, BB bb, ref BB[] mutants);
         public abstract int select_function(DisasmSection sec, BB[] bb, int n);
     }
 
@@ -31,13 +31,13 @@ namespace Nucleus
             }
 
 
-            public override uint mutate_function(DisasmSection dis, BB parent, BB[] mutants)
+            public override uint mutate_function(DisasmSection dis, BB parent, ref BB[] mutants)
             {
                 if (parent == null)
                 {
                     try
                     {
-                        mutants = new BB[1];
+                        mutants = new BB[] { new BB() };
                         mutants[0] = new BB();
                     }
                     catch (OutOfMemoryException)
@@ -115,7 +115,7 @@ namespace Nucleus
                 return n;
             }
 
-            public override uint mutate_function(DisasmSection dis, BB parent, BB[] mutants)
+            public override uint mutate_function(DisasmSection dis, BB parent, ref BB[] mutants)
             {
                 int i;
                 const uint max_mutants = 4096;
@@ -194,25 +194,18 @@ namespace Nucleus
         /*******************************************************************************
          **                            dispatch functions                             **
          ******************************************************************************/
-        static Tuple<string, Type>[] strategy_functions = {
-            Tuple.Create("linear", typeof(linear_strategy)),
-            Tuple.Create("recursive", typeof(recursive_strategy))
+        static (string, Type)[] strategy_functions = {
+            ("linear", typeof(linear_strategy)),
+            ("recursive", typeof(recursive_strategy))
         };
 
         string[] strategy_functions_doc = {
   /* linear     */ "Linear disassembly",
   /* recursive  */ "Recursive disassembly (incomplete implementation, not recommended)",
-};
-
-        static Strategy[] bb_strategy_functions = {
-  //{ (void*)bb_score_linear    , (void*)bb_mutate_linear    , (void*)bb_select_linear     },
-  //{ (void*)bb_score_recursive , (void*)bb_mutate_recursive , (void*)bb_select_recursive  },
-  //{ NULL, NULL, NULL }
-};
+        };
 
 
-        static Type
-        get_strategy_function_type()
+        static Type get_strategy_function_type()
         {
             foreach (var sf in strategy_functions)
             {
@@ -251,14 +244,14 @@ namespace Nucleus
         }
 
 
-        static uint bb_mutate(DisasmSection dis, BB parent, BB[] mutants)
+        static uint bb_mutate(DisasmSection dis, BB parent, ref BB[] mutants)
         {
             if (options.strategy.function == null)
             {
                 if (load_bb_strategy_functions() < 0) return 0;
             }
 
-            return options.strategy.function.mutate_function(dis, parent, mutants);
+            return options.strategy.function.mutate_function(dis, parent, ref mutants);
         }
 
         static int bb_select(DisasmSection dis, BB[] mutants, int len)

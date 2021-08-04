@@ -109,12 +109,6 @@ namespace Nucleus
         public bool trap;
     }
 
-    partial class X86Instruction : Instruction {
-        public
-          const byte MAX_LEN = 16;
 
-        public X86Instruction() { }
-        public X86Instruction(X86Instruction i) : base(i) { }
-    }
 }
 

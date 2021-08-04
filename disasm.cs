@@ -122,7 +122,9 @@ namespace Nucleus
                 {
                     erase_unmapped(addr);
                 }
-                addrmap[addr] |= flag;
+                if (!addrmap.TryGetValue(addr, out var value))
+                    value = 0;
+                addrmap[addr] = value | flag;
             }
         }
 
@@ -191,6 +193,7 @@ namespace Nucleus
                     dis.addrmap.insert(vma);
                 }
             }
+            bin.create_reko_disassembler();
             Log.verbose(1, "disassembler initialized");
 
             return 0;
@@ -206,9 +209,9 @@ namespace Nucleus
         }
 
 
-        static bool
-        nucleus_disasm_bb(Binary bin, DisasmSection dis, BB bb)
+        static bool nucleus_disasm_bb(Binary bin, DisasmSection dis, BB bb)
         {
+            Log.verbose(3, "  disassembling block: 0x{0:X16}", bb.start);
             switch (bin.arch)
             {
             case Binary.BinaryArch.ARCH_AARCH64:
@@ -219,9 +222,9 @@ namespace Nucleus
                 return nucleus_disasm_bb_mips(bin, dis, bb);
             case Binary.BinaryArch.ARCH_PPC:
                 return nucleus_disasm_bb_ppc(bin, dis, bb);
-            case Binary.BinaryArch.ARCH_X86:
-                return nucleus_disasm_bb_x86(bin, dis, bb);
 */
+            case Binary.BinaryArch.ARCH_X86:
+                return X86.nucleus_disasm_bb_x86(bin, dis, bb);
             default:
                 Log.print_err("disassembly for architecture {0} is not supported", bin.arch_str);
                 return false;
@@ -250,8 +253,8 @@ namespace Nucleus
             Q.Enqueue(null);
             while (Q.Count > 0)
             {
-                n = bb_mutate(dis, Q.Dequeue(), mutants);
-                for (i = 0; i < n; i++)
+                n = bb_mutate(dis, Q.Dequeue(), ref mutants);
+                for (i = 0; i < mutants.Length; i++)
                 {
                     if (!nucleus_disasm_bb(bin, dis, mutants[i]))
                     {
@@ -262,7 +265,7 @@ namespace Nucleus
                         goto fail;
                     }
                 }
-                if ((n = (uint)bb_select(dis, mutants, (int)n)) < 0)
+                if ((n = (uint)bb_select(dis, mutants, mutants.Length)) < 0)
                 {
                     goto fail;
                 }

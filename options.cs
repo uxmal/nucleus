@@ -115,19 +115,21 @@ namespace Nucleus
 
             case 'a':
               s = optarg;
-              s = s.Substring(0, s.IndexOf('-'));
-              for(i = 0; binary_arch_descr[i][0] != null; ++i) {
-                if(s == binary_arch_descr[i][0]) {
-                  options.binary.arch = (Binary.BinaryArch)i;
+              i = s.IndexOf('-');
+              if (i > 0)
+                s = s.Substring(0, i);
+              for(i = 0; i < binary_arch_descr.Length; ++i) {
+                if(s == binary_arch_descr[i].str) {
+                  options.binary.arch = binary_arch_descr[i].arch;
                   break;
                 }
               }
               s = optarg;
               if(s.IndexOf('-') > 0) {
                 s = s.Substring(s.IndexOf('-')+1);
+                options.binary.bits = Convert.ToUInt32(s);
               }
-              options.binary.bits = Convert.ToUInt32(s);
-              if(binary_arch_descr[i][0] == null) {
+              if(i >= binary_arch_descr.Length) {
                 Console.Write("ERROR: Unrecognized binary architecture '%s'\n", optarg);
                 print_usage(argv[0]);
                 return -1;

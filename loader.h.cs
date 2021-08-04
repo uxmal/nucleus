@@ -1,3 +1,5 @@
+using Reko.Core;
+using System;
 using System.Collections.Generic;
 
 namespace Nucleus
@@ -20,8 +22,7 @@ namespace Nucleus
 
     public partial class Section
     {
-        public
-          enum SectionType
+        public enum SectionType
         {
             SEC_TYPE_NONE = 0,
             SEC_TYPE_CODE = 1,
@@ -41,7 +42,7 @@ namespace Nucleus
         public byte[] bytes;
     };
 
-    public partial class Binary
+    public class Binary
     {
         public
           enum BinaryType
@@ -67,11 +68,26 @@ namespace Nucleus
         public BinaryType type;
         public string type_str;
         public BinaryArch arch;
+        public IProcessorArchitecture reko_arch;
         public string arch_str;
         public uint bits;
         public ulong entry;
-        public List<Section> sections;
-        public List<Symbol> symbols;
+        public List<Section> sections = new();
+        public List<Symbol> symbols = new();
+
+        public void create_reko_disassembler()
+        {
+            switch (arch)
+            {
+            case BinaryArch.ARCH_X86:
+                reko_arch = X86.create_disassembler(this);
+                break;
+            default:
+                Log.print_err("Reko support for {0} not implemented yet.", arch);
+                Environment.Exit(1);
+                return;
+            }
+        }
     }
 
     //int  load_binary   (string &fname, Binary *bin, Binary::BinaryType type);

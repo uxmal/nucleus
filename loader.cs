@@ -12,10 +12,14 @@ namespace Nucleus
   new[] {"pe"  , "Windows PE"},
 };
 
-        public static string[][] binary_arch_descr = {
-  new [] {"auto"  , "Try to automatically determine architecture (default)"},
-  new [] {"x86"   , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
-};
+        public static (string str, Binary.BinaryArch arch, string description)[] binary_arch_descr = {
+  ("auto"    , Binary.BinaryArch.ARCH_NONE, "Try to automatically determine architecture (default)"),
+  ("aarch64" , Binary.BinaryArch.ARCH_AARCH64, "aarch64 (experimental)"),
+  ("arm"     , Binary.BinaryArch.ARCH_ARM,     "arm (experimental)"),
+  ("mips"    , Binary.BinaryArch.ARCH_MIPS,    "mips (experimental)"),
+  ("ppc"     , Binary.BinaryArch.ARCH_PPC, "ppc: Specify ppc-32 or ppc-64 (default ppc-64, experimental)"),
+  ("x86"     , Binary.BinaryArch.ARCH_X86, "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"),
+        };
 
         #region BFD
         public class bfd
@@ -369,7 +373,7 @@ namespace Nucleus
             }
             bin.arch = options.binary.arch;
             bin.bits = options.binary.bits;
-            bin.arch_str = binary_arch_descr[(int)options.binary.arch][0];
+            bin.arch_str = binary_arch_descr[(int)options.binary.arch].Item1;
             bin.entry = 0;
 
             if (bin.bits == 0) {

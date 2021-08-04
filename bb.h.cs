@@ -38,7 +38,7 @@ namespace Nucleus
 
         public ulong start;
         public ulong end;
-        public List<NInstruction> insns;
+        public List<NInstruction> insns = new();
         public Function function;
         public Section section;
 
@@ -50,7 +50,7 @@ namespace Nucleus
         public bool padding;
         public bool trap;
 
-        public List<Edge> ancestors;
-        public List<Edge> targets;
+        public List<Edge> ancestors = new();
+        public List<Edge> targets = new();
     }
 }
