@@ -129,8 +129,7 @@ namespace Nucleus
         }
 
 
-        public void
-        add_bb(BB bb)
+        public void add_bb(BB bb)
         {
             this.BBs.Add(bb);
             if (this.start == 0 || (bb.start < this.start))
@@ -139,7 +138,7 @@ namespace Nucleus
             }
             if (this.end  == 0 || (bb.end > this.end))
             {
-                if ((bb.insns.Last().flags & Instruction.InstructionFlags.INS_FLAG_NOP) == 0) this.end = bb.end;
+                if ((bb.insns[^1].flags() & Instruction.InstructionFlags.INS_FLAG_NOP) == 0) this.end = bb.end;
             }
             bb.function = this;
         }

@@ -18,7 +18,7 @@ namespace Nucleus
             {
                 foreach (var ins in insns)
                 {
-                    ins.print(@out);
+                    @out.WriteLine(ins.ToString());
                 }
             }
             if (ancestors.Count > 0)
@@ -26,7 +26,7 @@ namespace Nucleus
                 @out.Write("--A ancestors:\n");
                 foreach (var e in ancestors)
                 {
-                    @out.Write("--A 0x%016jx (%s)\n", e.src.insns.Last().start, e.type2str());
+                    @out.Write("--A 0x{0} ({1})\n", e.src.insns.Last().Address, e.type2str());
                 }
             }
             if (targets.Count > 0)
@@ -41,8 +41,7 @@ namespace Nucleus
         }
 
 
-        public bool
-        is_called()
+        public bool is_called()
         {
             foreach (var e in ancestors)
             {
@@ -57,10 +56,9 @@ namespace Nucleus
         }
 
 
-        bool
-        returns()
+        bool returns()
         {
-            return (insns.Last().flags & Instruction.InstructionFlags.INS_FLAG_RET) != 0;
+            return (insns[^1].flags() & Instruction.InstructionFlags.INS_FLAG_RET) != 0;
         }
     }
 }

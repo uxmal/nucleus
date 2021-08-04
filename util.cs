@@ -1,59 +1,7 @@
-
-/*******************************************************************************
- **                                string utils                               **
- ******************************************************************************/
-
- /*
-string
-str_realpath(string s)
+namespace Nucleus
 {
-  char real[PATH_MAX+1];
 
-  if(!realpath(s, real)) {
-    return "";
-  }
-  return string(real);
-}
-
-
-string
-str_realpath_dir(string s)
-{
-  char real[PATH_MAX+1], *dir;
-
-  if(!realpath(s, real)) {
-    return "";
-  }
-
-  dir = dirname(real);
-  return string(dir);
-}
-
-
-string
-str_realpath_base(string s)
-{
-  char real[PATH_MAX+1], *base;
-
-  if(!realpath(s, real)) {
-    return "";
-  }
-
-  base = basename(real);
-  return string(base);
-}
-
-
-string
-str_getenv(string env)
-{
-  char *e;
-
-  e = getenv(env);
-  return e ? string(e) : "";
-}
-
-*/
+    public static class utils {
 
 /*******************************************************************************
  **                               rand functions                              **
@@ -102,3 +50,4 @@ fast_rand64()
 }
 
 */
+} }

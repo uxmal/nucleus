@@ -88,23 +88,22 @@ namespace Nucleus
 
 
 
-            uint
-            bb_queue_recursive(DisasmSection dis, BB parent, BB[] mutants, uint n, uint max_mutants)
+            uint bb_queue_recursive(DisasmSection dis, BB parent, BB[] mutants, uint n, uint max_mutants)
             {
                 foreach (var instr in parent.insns)
                 {
-                    var target = instr.target;
-                    if (target != 0 && dis.section.contains(target)
-                       && (dis.addrmap.addr_type(target) & AddressMap.DisasmRegion.DISASM_REGION_BB_START) == 0)
+                    var target = instr.target();
+                    if (target is not null && dis.section.contains(target.ToLinear())
+                       && (dis.addrmap.addr_type(target.ToLinear()) & AddressMap.DisasmRegion.DISASM_REGION_BB_START) == 0)
                     {
                         /* recursively queue the target BB for disassembly */
-                        mutants[n++].set(target, 0);
+                        mutants[n++].set(target.ToLinear(), 0);
                     }
                     if ((n + 1) == max_mutants) break;
                 }
-                var ins = parent.insns.Last();
-                if ((ins.flags & Instruction.InstructionFlags.INS_FLAG_COND) != 0
-                   || (ins.flags & Instruction.InstructionFlags.INS_FLAG_CALL) != 0)
+                var ins = parent.insns[^1];
+                if ((ins.flags() & Instruction.InstructionFlags.INS_FLAG_COND) != 0
+                   || (ins.flags() & Instruction.InstructionFlags.INS_FLAG_CALL) != 0)
                 {
                     /* queue fall-through block of conditional jump or call */
                     if (((n + 1) < max_mutants) && dis.section.contains(parent.end)

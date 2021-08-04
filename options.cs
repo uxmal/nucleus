@@ -1,4 +1,7 @@
 using System;
+using System.IO;
+using static Nucleus.utils;
+using static GetOpt;
 
 namespace Nucleus
 {
@@ -66,12 +69,13 @@ namespace Nucleus
           options.verbosity           = 0;
           options.warnings            = true;
           options.only_code_sections  = true;
-          options.allow_privileged    = 0;
+          options.allow_privileged    = false;
           options.summarize_functions = false;
 
-          options.nucleuspath.real = str_realpath(argv[0]);
-          options.nucleuspath.dir  = str_realpath_dir(argv[0]);
-          options.nucleuspath.@base = str_realpath_base(argv[0]);
+          string fullpath = Path.GetFullPath(argv[0]);
+          options.nucleuspath.real = fullpath;
+          options.nucleuspath.dir  = Path.GetDirectoryName(fullpath);
+          options.nucleuspath.@base = Path.GetFileName(fullpath);
 
           options.binary.type     = Binary.BinaryType.BIN_TYPE_AUTO;
           options.binary.arch     = Binary.BinaryArch.ARCH_NONE;
@@ -80,14 +84,15 @@ namespace Nucleus
           options.strategy.function = null;
 
           bool opterr = false;
-          while((opt = getopt(argc, argv, optstr)) != -1) {
+          var go = new GetOpt(argv, optstr);
+          while((opt = go.getopt(out var optarg)) != -1) {
             switch(opt) {
             case 'v':
               options.verbosity++;
               break;
 
             case 'w':
-              options.warnings = 0;
+              options.warnings = false;
               break;
 
             case 'e':
@@ -109,20 +114,20 @@ namespace Nucleus
               break;
 
             case 'a':
-              s = string(optarg);
-              s = s.substr(0, s.find('-'));
-              for(i = 0; binary_arch_descr[i][0]; i++) {
-                if(!strcmp(s, binary_arch_descr[i][0])) {
-                  options.binary.arch = (Binary::BinaryArch)i;
+              s = optarg;
+              s = s.Substring(0, s.IndexOf('-'));
+              for(i = 0; binary_arch_descr[i][0] != null; ++i) {
+                if(s == binary_arch_descr[i][0]) {
+                  options.binary.arch = (Binary.BinaryArch)i;
                   break;
                 }
               }
-              s = string(optarg);
-              if(s.find('-') != string::npos) {
-                s = s.substr(s.find('-')+1);
+              s = optarg;
+              if(s.IndexOf('-') > 0) {
+                s = s.Substring(s.IndexOf('-')+1);
               }
-              options.binary.bits = strtoul(s, NULL, 0);
-              if(!binary_arch_descr[i][0]) {
+              options.binary.bits = Convert.ToUInt32(s);
+              if(binary_arch_descr[i][0] == null) {
                 Console.Write("ERROR: Unrecognized binary architecture '%s'\n", optarg);
                 print_usage(argv[0]);
                 return -1;
@@ -130,35 +135,35 @@ namespace Nucleus
               break;
 
             case 'f':
-              options.summarize_functions = 1;
+              options.summarize_functions = true;
               break;
 
             case 'b':
-              options.binary.base_vma = Convert.ToUInt64(optarg, null, 0);
-              if(!options.binary.base_vma) {
-                Console.Write("ERROR: Invalid binary base address %s\n", optarg);
+              options.binary.base_vma = Convert.ToUInt64(optarg, 16);
+              if(options.binary.base_vma == 0) {
+                Console.Write("ERROR: Invalid binary base address {0}\n", optarg);
                 return -1;
               }
               break;
 
             case 'D':
-              options.only_code_sections = 0;
+              options.only_code_sections = false;
               break;
 
             case 'p':
-              options.allow_privileged = 1;
+              options.allow_privileged = true;
               break;
 
             case 'g':
-              options.exports.dot = string(optarg);
+              options.exports.dot = optarg;
               break;
 
             case 'i':
-              options.exports.ida = string(optarg);
+              options.exports.ida = optarg;
               break;
 
             case 'd':
-              options.strategy_function.name = string(optarg);
+              options.strategy.name = optarg;
               break;
 
             case 'h':
@@ -168,12 +173,12 @@ namespace Nucleus
             }
           }
 
-          if(options.binary.filename.empty()) {
+          if(string.IsNullOrEmpty(options.binary.filename)) {
             print_usage(argv[0]);
             return -1;
           }
 
-          if(options.strategy_function.name.empty()) {
+          if(string.IsNullOrEmpty(options.strategy.name)) {
             Console.Write("ERROR: No strategy function specified\n");
             print_usage(argv[0]);
             return -1;

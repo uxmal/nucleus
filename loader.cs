@@ -12,7 +12,7 @@ namespace Nucleus
   new[] {"pe"  , "Windows PE"},
 };
 
-        static string[][] binary_arch_descr = {
+        public static string[][] binary_arch_descr = {
   new [] {"auto"  , "Try to automatically determine architecture (default)"},
   new [] {"x86"   , "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"},
 };

@@ -4,7 +4,7 @@ namespace Nucleus
         public int verbosity;
         public bool warnings;
         public bool only_code_sections;
-        public int allow_privileged;
+        public bool allow_privileged;
         public bool summarize_functions;
 
         public struct path_options {
@@ -16,6 +16,7 @@ namespace Nucleus
 
         public struct export_options {
             public string ida;
+            public string binja;
             public string dot;
         }
         public export_options exports;

@@ -54,7 +54,11 @@ namespace Nucleus
         public enum BinaryArch
         {
             ARCH_NONE = 0,
-            ARCH_X86 = 1
+            ARCH_AARCH64 = 1,
+            ARCH_ARM = 2,
+            ARCH_MIPS = 3,
+            ARCH_PPC = 4,
+            ARCH_X86 = 5
         };
 
         public Binary() { type = (0); arch = (0); bits = (0); entry = (0); }

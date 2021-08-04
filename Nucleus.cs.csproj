@@ -5,7 +5,11 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Nucleus</RootNamespace>
     <AssemblyName>Nucleus</AssemblyName>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <LangVersion>9.0</LangVersion>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Reko.Decompiler.Runtime" Version="0.9.3" />
+  </ItemGroup>
 </Project>
