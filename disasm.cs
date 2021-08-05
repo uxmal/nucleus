@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 
 namespace Nucleus
 {
@@ -20,21 +21,15 @@ namespace Nucleus
 
 
 
+    /*******************************************************************************
+     **                              DisasmSection                                **
+     ******************************************************************************/
     public partial class DisasmSection
     {
         public Section section;
         public AddressMap addrmap = new();
         public List<BB> BBs = new();
         public List<DataRegion> data = new();
-    }
-
-
-
-    /*******************************************************************************
-     **                              DisasmSection                                **
-     ******************************************************************************/
-    public partial class DisasmSection
-    {
 
         public void print_BBs(TextWriter @out)
         {
@@ -278,8 +273,8 @@ namespace Nucleus
                             dis.addrmap.add_addr_flag(vma, DisasmRegion.CODE);
                         }
                         var bb = mutants[i];
-                        dis.BBs.Add(bb);
-                        Q.Enqueue(new BB(bb));
+                        dis.BBs.Add(new BB(bb));
+                        Q.Enqueue(bb);
                     }
                 }
             }
@@ -291,9 +286,6 @@ namespace Nucleus
             ret = -1;
 
             cleanup:
-            //if (mutants) {
-            //    delete[] mutants;
-            //}
             return ret;
         }
 
