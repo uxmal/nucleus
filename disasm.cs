@@ -7,34 +7,26 @@ namespace Nucleus
 {
     using static capstone;
 
-    public partial class AddressMap
+    [Flags]
+    public enum DisasmRegion : ushort
     {
-        [Flags]
-        public enum DisasmRegion
-        {
-            DISASM_REGION_UNMAPPED = 0x0000,
-            DISASM_REGION_CODE = 0x0001,
-            DISASM_REGION_DATA = 0x0002,
-            DISASM_REGION_INS_START = 0x0100,
-            DISASM_REGION_BB_START = 0x0200,
-            DISASM_REGION_FUNC_START = 0x0400
-        }
+        UNMAPPED = 0x0000,
+        CODE = 0x0001,
+        DATA = 0x0002,
+        INS_START = 0x0100,
+        BB_START = 0x0200,
+        FUNC_START = 0x0400
+    }
 
 
-        private SortedList<ulong, DisasmRegion> addrmap = new();
-        private List<ulong> unmapped = new();
-        private SortedList<ulong, int> unmapped_lookup = new();
-    };
 
     public partial class DisasmSection
     {
-
         public Section section;
         public AddressMap addrmap = new();
         public List<BB> BBs = new();
         public List<DataRegion> data = new();
-
-    };
+    }
 
 
 
@@ -47,7 +39,7 @@ namespace Nucleus
         public void print_BBs(TextWriter @out)
         {
             @out.WriteLine("<Section {0} {1} @0x{2:X16} (size {3})>",
-                    section.name, (section.type == Section.SectionType.SEC_TYPE_CODE) ? "C" : "D",
+                    section.name, (section.type == SectionType.CODE) ? "C" : "D",
                     section.vma, section.size);
             @out.WriteLine();
             sort_BBs();
@@ -68,6 +60,10 @@ namespace Nucleus
      ******************************************************************************/
     public partial class AddressMap
     {
+        private SortedList<ulong, DisasmRegion> addrmap = new();
+        private List<ulong> unmapped = new();
+        private SortedList<ulong, int> unmapped_lookup = new();
+
         public void insert(ulong addr)
         {
             if (!contains(addr))
@@ -89,7 +85,7 @@ namespace Nucleus
             Debug.Assert(contains(addr));
             if (!contains(addr))
             {
-                return AddressMap.DisasmRegion.DISASM_REGION_UNMAPPED;
+                return DisasmRegion.UNMAPPED;
             }
             else
             {
@@ -104,7 +100,7 @@ namespace Nucleus
             Debug.Assert(contains(addr));
             if (contains(addr))
             {
-                if (type != AddressMap.DisasmRegion.DISASM_REGION_UNMAPPED)
+                if (type != DisasmRegion.UNMAPPED)
                 {
                     erase_unmapped(addr);
                 }
@@ -118,7 +114,7 @@ namespace Nucleus
             Debug.Assert(contains(addr));
             if (contains(addr))
             {
-                if (flag != DisasmRegion.DISASM_REGION_UNMAPPED)
+                if (flag != DisasmRegion.UNMAPPED)
                 {
                     erase_unmapped(addr);
                 }
@@ -181,8 +177,8 @@ namespace Nucleus
             for (var i = 0; i < bin.sections.Count; i++)
             {
                 var sec = bin.sections[i];
-                if ((sec.type != Section.SectionType.SEC_TYPE_CODE)
-                   && !(!Nucleus.options.only_code_sections && (sec.type == Section.SectionType.SEC_TYPE_DATA))) continue;
+                if ((sec.type != SectionType.CODE)
+                   && !(!Nucleus.options.only_code_sections && (sec.type == SectionType.DATA))) continue;
 
                 var dis = new DisasmSection();
                 disasm.Add(dis);
@@ -211,7 +207,6 @@ namespace Nucleus
 
         static bool nucleus_disasm_bb(Binary bin, DisasmSection dis, BB bb)
         {
-            Log.verbose(3, "  disassembling block: 0x{0:X16}", bb.start);
             switch (bin.arch)
             {
             case Binary.BinaryArch.ARCH_AARCH64:
@@ -242,7 +237,7 @@ namespace Nucleus
             BB[] mutants = null;
             Queue<BB> Q = new();
 
-            if ((dis.section.type != Section.SectionType.SEC_TYPE_CODE) && options.only_code_sections)
+            if ((dis.section.type != SectionType.CODE) && options.only_code_sections)
             {
                 Log.print_warn("skipping non-code section '{0}'", dis.section.name);
                 return 0;
@@ -253,7 +248,7 @@ namespace Nucleus
             Q.Enqueue(null);
             while (Q.Count > 0)
             {
-                n = bb_mutate(dis, Q.Dequeue(), ref mutants);
+                n = options.strategy.function.mutate_function(dis, Q.Dequeue(), ref mutants);
                 for (i = 0; i < mutants.Length; i++)
                 {
                     if (!nucleus_disasm_bb(bin, dis, mutants[i]))
@@ -265,7 +260,7 @@ namespace Nucleus
                         goto fail;
                     }
                 }
-                if ((n = (uint)bb_select(dis, mutants, mutants.Length)) < 0)
+                if ((n = (uint)options.strategy.function.select_function(dis, mutants, mutants.Length)) < 0)
                 {
                     goto fail;
                 }
@@ -273,18 +268,18 @@ namespace Nucleus
                 {
                     if (mutants[i].alive)
                     {
-                        dis.addrmap.add_addr_flag(mutants[i].start, AddressMap.DisasmRegion.DISASM_REGION_BB_START);
+                        dis.addrmap.add_addr_flag(mutants[i].start, DisasmRegion.BB_START);
                         foreach (var ins in mutants[i].insns)
                         {
-                            dis.addrmap.add_addr_flag(ins.Address.ToLinear(), AddressMap.DisasmRegion.DISASM_REGION_INS_START);
+                            dis.addrmap.add_addr_flag(ins.Address.ToLinear(), DisasmRegion.INS_START);
                         }
                         for (vma = mutants[i].start; vma < mutants[i].end; vma++)
                         {
-                            dis.addrmap.add_addr_flag(vma, AddressMap.DisasmRegion.DISASM_REGION_CODE);
+                            dis.addrmap.add_addr_flag(vma, DisasmRegion.CODE);
                         }
-                        var bb = new BB(mutants[i]);
+                        var bb = mutants[i];
                         dis.BBs.Add(bb);
-                        Q.Enqueue(bb);
+                        Q.Enqueue(new BB(bb));
                     }
                 }
             }

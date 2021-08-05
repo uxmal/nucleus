@@ -30,7 +30,6 @@ namespace Nucleus
                 return bb.score;
             }
 
-
             public override uint mutate_function(DisasmSection dis, BB parent, ref BB[] mutants)
             {
                 if (parent == null)
@@ -55,7 +54,7 @@ namespace Nucleus
                 }
                 else
                 {
-                    mutants[0].set(0, 0);
+                    mutants = Array.Empty<BB>();
                     return 0;
                 }
 
@@ -65,13 +64,10 @@ namespace Nucleus
 
             public override int select_function(DisasmSection sec, BB[] mutants, int len)
             {
-                int i;
-
-                for (i = 0; i < len; i++)
+                for (int i = 0; i < len; i++)
                 {
                     mutants[i].alive = true;
                 }
-
                 return len;
             }
         }
@@ -94,7 +90,7 @@ namespace Nucleus
                 {
                     var target = instr.target();
                     if (target is not null && dis.section.contains(target.ToLinear())
-                       && (dis.addrmap.addr_type(target.ToLinear()) & AddressMap.DisasmRegion.DISASM_REGION_BB_START) == 0)
+                       && (dis.addrmap.addr_type(target.ToLinear()) & DisasmRegion.BB_START) == 0)
                     {
                         /* recursively queue the target BB for disassembly */
                         mutants[n++].set(target.ToLinear(), 0);
@@ -102,12 +98,12 @@ namespace Nucleus
                     if ((n + 1) == max_mutants) break;
                 }
                 var ins = parent.insns[^1];
-                if ((ins.flags() & Instruction.InstructionFlags.INS_FLAG_COND) != 0
-                   || (ins.flags() & Instruction.InstructionFlags.INS_FLAG_CALL) != 0)
+                if ((ins.flags() & InstructionFlags.INS_FLAG_COND) != 0
+                   || (ins.flags() & InstructionFlags.INS_FLAG_CALL) != 0)
                 {
                     /* queue fall-through block of conditional jump or call */
                     if (((n + 1) < max_mutants) && dis.section.contains(parent.end)
-                       && (dis.addrmap.addr_type(parent.end) & AddressMap.DisasmRegion.DISASM_REGION_BB_START) == 0)
+                       && (dis.addrmap.addr_type(parent.end) & DisasmRegion.BB_START) == 0)
                     {
                         mutants[n++].set(parent.end, 0);
                     }
@@ -166,7 +162,7 @@ namespace Nucleus
                     if (n == 0)
                     {
                         /* no recursive targets found, resort to heuristics */
-                        if (dis.section.contains(parent.end) && (dis.addrmap.addr_type(parent.end) & AddressMap.DisasmRegion.DISASM_REGION_BB_START) == 0)
+                        if (dis.section.contains(parent.end) && (dis.addrmap.addr_type(parent.end) & DisasmRegion.BB_START) == 0)
                         {
                             /* guess next BB directly after parent */
                             mutants[n++].set(parent.end, 0);

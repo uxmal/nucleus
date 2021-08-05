@@ -138,7 +138,7 @@ namespace Nucleus
             }
             if (this.end  == 0 || (bb.end > this.end))
             {
-                if ((bb.insns[^1].flags() & Instruction.InstructionFlags.INS_FLAG_NOP) == 0) this.end = bb.end;
+                if ((bb.insns[^1].flags() & InstructionFlags.INS_FLAG_NOP) == 0) this.end = bb.end;
             }
             bb.function = this;
         }

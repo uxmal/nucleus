@@ -1,8 +1,100 @@
+using Reko.Core;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Nucleus
 {
+    public class Symbol
+    {
+        public
+          enum SymbolType
+        {
+            SYM_TYPE_UKN = 0x000,
+            SYM_TYPE_FUNC = 0x001
+        };
+
+        public Symbol() { type = SymbolType.SYM_TYPE_UKN; name = null; addr = 0; }
+
+        public SymbolType type;
+        public string name;
+        public ulong addr;
+    };
+
+    public enum SectionType
+    {
+        NONE = 0,
+        CODE = 1,
+        DATA = 2
+    }
+
+    public partial class Section
+    {
+        public Section() { binary = null; type = 0; vma = 0; size = 0; bytes = null; }
+
+        public bool contains(ulong addr) { return (addr >= vma) && (addr - vma < size); }
+        public bool is_import_table() { return name == ".plt"; }
+
+        public Binary binary;
+        public string name;
+        public SectionType type;
+        public ulong vma;
+        public ulong size;
+        public byte[] bytes;
+    };
+
+    public class Binary
+    {
+        public
+          enum BinaryType
+        {
+            BIN_TYPE_AUTO = 0,
+            BIN_TYPE_RAW = 1,
+            BIN_TYPE_ELF = 2,
+            BIN_TYPE_PE = 3
+        };
+        public enum BinaryArch
+        {
+            ARCH_NONE = 0,
+            ARCH_AARCH64 = 1,
+            ARCH_ARM = 2,
+            ARCH_MIPS = 3,
+            ARCH_PPC = 4,
+            ARCH_X86 = 5
+        };
+
+        public Binary() { type = (0); arch = (0); bits = (0); entry = (0); }
+
+        public string filename;
+        public BinaryType type;
+        public string type_str;
+        public BinaryArch arch;
+        public IProcessorArchitecture reko_arch;
+        public string arch_str;
+        public uint bits;
+        public ulong entry;
+        public List<Section> sections = new();
+        public List<Symbol> symbols = new();
+
+        public void create_reko_disassembler()
+        {
+            switch (arch)
+            {
+            case BinaryArch.ARCH_X86:
+                reko_arch = X86.create_disassembler(this);
+                break;
+            default:
+                Log.print_err("Reko support for {0} not implemented yet.", arch);
+                Environment.Exit(1);
+                return;
+            }
+        }
+    }
+
+    //int  load_binary   (string &fname, Binary *bin, Binary::BinaryType type);
+    //void unload_binary (Binary *bin);
+
+
     partial class Nucleus
     {
         static string[][] binary_types_descr = {
@@ -358,18 +450,13 @@ namespace Nucleus
         static int
         load_binary_raw(string fname, Binary bin, Binary.BinaryType type)
         {
-            int ret;
-            long fsize;
-            FileStream f = null;
-            Section sec;
-
             bin.filename = fname;
             bin.type = type;
             bin.type_str = "raw";
 
             if (options.binary.arch == Binary.BinaryArch.ARCH_NONE) {
                 Log.print_err("cannot determine binary architecture, specify manually");
-                goto fail;
+                return -1;
             }
             bin.arch = options.binary.arch;
             bin.bits = options.binary.bits;
@@ -386,43 +473,51 @@ namespace Nucleus
                 }
             }
 
-            sec = new Section();
+            var sec = new Section();
             bin.sections.Add(sec);
 
             sec.binary = bin;
             sec.name = "raw";
-            sec.type = Section.SectionType.SEC_TYPE_CODE;
+            sec.type = SectionType.CODE;
             sec.vma = options.binary.base_vma;
 
             try
             {
-                f = File.OpenRead(fname);
-            } catch (Exception ex) {
+                //sec.bytes = generate_random_data(10);
+                sec.bytes = File.ReadAllBytes(fname);
+            }
+            catch (Exception ex) {
                 Log.print_err("failed to open binary '{0}' ({1})", fname, ex.Message);
-                goto fail;
+                return -1;
             }
 
-            sec.bytes = File.ReadAllBytes(fname);
             sec.size = (uint)sec.bytes.Length;
             if (sec.size == 0)
             {
                 Log.print_err("binary '{0}' appears to be empty", fname);
-                goto fail;
+                return -1;
             }
-            ret = 0;
-            goto cleanup;
-
-            fail:
-            ret = -1;
-
-            cleanup:
-            if (f != null) {
-                f.Dispose();
-            }
-
-            return ret;
+            return 0;
         }
 
+        private static byte[] generate_random_data(int size)
+        {
+            var mem = new byte[size];
+            var rnd = new Random(42);
+            rnd.NextBytes(mem);
+            return mem;
+            for (int i = 0; i < 10; ++i)
+            {
+                int c = rnd.Next() % 4;
+                int p = rnd.Next() % mem.Length;
+                for (int j = 0; j < c; ++j)
+                {
+                    mem[(p + j) % mem.Length] = 0x90;
+                }
+            }
+
+            return mem;
+        }
 
         static int load_binary(string fname, Binary bin, Binary.BinaryType type)
         {

@@ -36,7 +36,7 @@ namespace Nucleus
                     sec = bin.sections[i];
                     Log.verbose(1, "  0x{0:X16} {1,8} {2,-20} {3}",
                             sec.vma, sec.size, sec.name,
-                            sec.type == Section.SectionType.SEC_TYPE_CODE ? "CODE" : "DATA");
+                            sec.type == SectionType.CODE ? "CODE" : "DATA");
                 }
                 if (bin.symbols.Count > 0)
                 {

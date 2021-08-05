@@ -7,10 +7,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
+#pragma warning disable IDE1006
+
 namespace Nucleus
 {
-    using NOperand = Reko.Core.Machine.MachineOperand;
-
     public partial class CFG
     {
         public void print_functions(TextWriter @out)
@@ -20,8 +20,7 @@ namespace Nucleus
             }
         }
 
-        public void
-        print_function_summaries(TextWriter @out)
+        public void print_function_summaries(TextWriter @out)
         {
             foreach (var f in this.functions) {
                 f.print_summary(@out);
@@ -114,48 +113,46 @@ analyze_addrtaken_x86()
 
 
 
-void
-analyze_addrtaken()
-{
-    Log.verbose(1, "starting address-taken analysis");
-
-    switch (this.binary.arch)
-    {
-    case Binary.BinaryArch.ARCH_PPC:
-        analyze_addrtaken_ppc();
-        break;
-    case Binary.BinaryArch.ARCH_X86:
-        analyze_addrtaken_x86();
-        break;
-    default:
-        Log.print_warn("address-taken analysis not yet supported for {0}", this.binary.arch_str);
-        break;
-    }
-
-    Log.verbose(1, "address-taken analysis complete");
-}
-
-
-void
-mark_jmptab_as_data(ulong start, ulong end)
-{
-    ulong addr;
-
-    BB bb = null;
-    BB cc = null;
-    for (addr = start; addr < end; addr++)
-    {
-        bb = this.get_bb(addr, out var _);
-        if (bb is null) continue;
-        if (bb != cc)
+        void
+        analyze_addrtaken()
         {
-            bb.invalid = true;
-            unlink_bb(bb);
-            bad_bbs[bb.start] = bb;
-            cc = bb;
+            Log.verbose(1, "starting address-taken analysis");
+
+            switch (this.binary.arch)
+            {
+            case Binary.BinaryArch.ARCH_PPC:
+                analyze_addrtaken_ppc();
+                break;
+            case Binary.BinaryArch.ARCH_X86:
+                analyze_addrtaken_x86();
+                break;
+            default:
+                Log.print_warn("address-taken analysis not yet supported for {0}", this.binary.arch_str);
+                break;
+            }
+
+            Log.verbose(1, "address-taken analysis complete");
         }
-    }
-}
+
+
+        void mark_jmptab_as_data(ulong start, ulong end)
+        {
+            ulong addr;
+
+            BB cc = null;
+            for (addr = start; addr < end; addr++)
+            {
+                var bb = this.get_bb(addr, out var _);
+                if (bb is null) continue;
+                if (bb != cc)
+                {
+                    bb.invalid = true;
+                    unlink_bb(bb);
+                    bad_bbs[bb.start] = bb;
+                    cc = bb;
+                }
+            }
+        }
 
 
 void
@@ -1112,19 +1109,15 @@ void expand_function(Function f, BB bb)
         }
 
 
-        void
-        verify_padding()
+        void verify_padding()
         {
-            bool call_fallthrough;
-            ulong noplen;
-
-    /* Fix incorrectly identified padding blocks (they turned out to be reachable) */
+            /* Fix incorrectly identified padding blocks (they turned out to be reachable) */
             foreach (var kv in this.start2bb) {
                 var bb = kv.Value;
                 if (bb.trap) continue;
                 if (bb.padding && bb.ancestors.Count > 0) {
-            call_fallthrough = false;
-                    noplen = (bb.end - bb.start);
+                    bool call_fallthrough = false;
+                    ulong noplen = (bb.end - bb.start);
                     foreach (var e in bb.ancestors) {
                         if ((e.type == Edge.EdgeType.EDGE_TYPE_FALLTHROUGH)
                            && ((e.src.insns[^1].InstructionClass & InstrClass.Call) != 0)) {
@@ -1137,44 +1130,40 @@ void expand_function(Function f, BB bb)
             if (call_fallthrough && (noplen > 1)) continue;
                     bb.padding = false;
                     link_bbs(Edge.EdgeType.EDGE_TYPE_FALLTHROUGH, bb, bb.end);
+                }
+            }
         }
-    }
-}
 
 
-        void
-        detect_bad_bbs()
+        void detect_bad_bbs()
         {
             BB cc;
-            bool invalid;
             int offset;
-            List<BB> blacklist = new List<BB>();
 
             /* This improves accuracy for code with inline data (otherwise it does nothing) */
 
-            foreach (var kv in this.bad_bbs) blacklist.Add(kv.Value);
-            foreach (var kv in this.start2bb) {
-                if (kv.Value.trap) blacklist.Add(kv.Value);
-    }
+            List<BB> blacklist = this.bad_bbs.Values
+                .Concat(this.start2bb.Values.Where(bb => bb.trap))
+                .ToList();
 
-    /* Mark BBs that may fall through to a blacklisted block as invalid */
+            /* Mark BBs that may fall through to a blacklisted block as invalid */
             foreach (var bb in blacklist) {
-        invalid = true;
-        cc = bb;
+                bool invalid = true;
+                cc = bb;
                 while (invalid) {
                     cc = get_bb(cc.start - 1, out offset);
                     if (cc == null)
                         break;
                     var flags = cc.insns[^1].flags();
-                    if ((flags & Instruction.InstructionFlags.INS_FLAG_CFLOW) != 0 && (Instruction.InstructionFlags.INS_FLAG_INDIRECT) != 0)
+                    if ((flags & InstructionFlags.INS_FLAG_CFLOW) != 0 && (InstructionFlags.INS_FLAG_INDIRECT) != 0)
                     {
                         invalid = false;
                     }
-                    else if ((flags & Instruction.InstructionFlags.INS_FLAG_CALL) != 0 || (flags & Instruction.InstructionFlags.INS_FLAG_JMP) != 0)
+                    else if ((flags & InstructionFlags.INS_FLAG_CALL) != 0 || (flags & InstructionFlags.INS_FLAG_JMP) != 0)
                     {
                         invalid = (get_bb(cc.insns[^1].target(), out offset) == null);
                     }
-                    else if ((flags & Instruction.InstructionFlags.INS_FLAG_RET) != 0)
+                    else if ((flags & InstructionFlags.INS_FLAG_RET) != 0)
                     {
                         invalid = false;
                     }
@@ -1182,16 +1171,16 @@ void expand_function(Function f, BB bb)
                         cc.invalid = true;
                         unlink_bb(cc);
                         bad_bbs[cc.start] = cc;
+                    }
+                }
             }
-        }
-    }
 
-    /* Remove bad BBs from the CFG map */
+            /* Remove bad BBs from the CFG map */
             foreach (var bb in this.bad_bbs.Values) {
                 if (this.start2bb.ContainsKey(bb.start)) {
                     this.start2bb.Remove(bb.start);
-        }
-    }
+                }
+            }
         }
 
         BB get_bb(Address addr, out int offset)
@@ -1243,14 +1232,9 @@ void expand_function(Function f, BB bb)
 
         void link_bbs(Edge.EdgeType type, BB bb, ulong target, ulong jmptab = 0)
         {
-            BB cc;
-            bool is_switch;
-            int offset;
-
             Debug.Assert(type != Edge.EdgeType.EDGE_TYPE_NONE);
-
-            is_switch = (jmptab > 0);
-            cc = this.get_bb(target, out offset);
+            bool is_switch = (jmptab > 0);
+            BB cc = this.get_bb(target, out int offset);
             if (cc!= null) {
                 bb.targets.Add(new Edge(type, bb, cc, is_switch, jmptab, offset));
                 cc.ancestors.Add(new Edge(type, bb, cc, is_switch, jmptab, offset));
@@ -1277,10 +1261,8 @@ void expand_function(Function f, BB bb)
         }
 
 
-        void unlink_edge(BB bb, BB cc)
+        static void unlink_edge(BB bb, BB cc)
         {
-            //std::list<Edge>::iterator f;
-
             bb.targets.RemoveAll(f => f.dst == cc);
             cc.ancestors.RemoveAll(f => f.src == bb);
         }
@@ -1317,15 +1299,15 @@ void expand_function(Function f, BB bb)
             foreach (var dis in disasm) {
                 foreach (var bb in dis.BBs) {
                     var flags = bb.insns.Last().flags();
-                    if ((flags & Instruction.InstructionFlags.INS_FLAG_CALL) != 0 || (flags & Instruction.InstructionFlags.INS_FLAG_JMP) != 0) {
-                        if ((flags & Instruction.InstructionFlags.INS_FLAG_INDIRECT) == 0) {
+                    if ((flags & InstructionFlags.INS_FLAG_CALL) != 0 || (flags & InstructionFlags.INS_FLAG_JMP) != 0) {
+                        if ((flags & InstructionFlags.INS_FLAG_INDIRECT) == 0) {
                             var aaddr = bb.insns[^1].target();
                             link_bbs(bb.insns.Last().edge_type(), bb, aaddr.ToLinear());
                         }
-                        if ((flags & Instruction.InstructionFlags.INS_FLAG_CALL) != 0 || (flags & Instruction.InstructionFlags.INS_FLAG_COND) != 0) {
+                        if ((flags & InstructionFlags.INS_FLAG_CALL) != 0 || (flags & InstructionFlags.INS_FLAG_COND) != 0) {
                             link_bbs(Edge.EdgeType.EDGE_TYPE_FALLTHROUGH, bb, bb.end);
                         }
-                    } else if ((flags & Instruction.InstructionFlags.INS_FLAG_CFLOW) == 0 && !bb.padding) {
+                    } else if ((flags & InstructionFlags.INS_FLAG_CFLOW) == 0 && !bb.padding) {
                         /* A block that doesn't have a control flow instruction at the end;
                          * this can happen if the next block is a nop block */
                         link_bbs(Edge.EdgeType.EDGE_TYPE_FALLTHROUGH, bb, bb.end);

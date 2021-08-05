@@ -196,21 +196,6 @@ namespace Nucleus
         }
 
 
-        static Operand.OperandType
-        cs_to_nucleus_op_type(MachineOperand op)
-        {
-            switch (op) {
-            case RegisterOperand _:
-                return Operand.OperandType.OP_TYPE_REG;
-            case ImmediateOperand _:
-                return Operand.OperandType.OP_TYPE_IMM;
-            case MemoryOperand _:
-                return Operand.OperandType.OP_TYPE_MEM;
-            default:
-                return Operand.OperandType.OP_TYPE_NONE;
-            }
-        }
-
         public static IProcessorArchitecture create_disassembler(Binary bin)
         {
             var options = new Dictionary<string, object>();
@@ -233,132 +218,134 @@ namespace Nucleus
         public static bool nucleus_disasm_bb_x86(Binary bin, DisasmSection dis, BB bb)
         {
             bool ret, jmp, cflow, cond, call, nop, only_nop, priv, trap;
-  int ndisassembled;
-  ulong pc_addr, offset;
+            int ndisassembled;
+            ulong pc_addr, offset;
 
             var arch = bin.reko_arch;
 
-  offset = bb.start - dis.section.vma;
-  if((bb.start < dis.section.vma) || (offset >= dis.section.size)) {
-    Log.print_err("basic block address points outside of section '{0}'", dis.section.name);
-    goto fail;
-  }
-    if (!arch.TryParseAddress(dis.section.vma.ToString("X"), out var addrSection))
-    {
-        Log.print_err("Lolwut: {0:X}", dis.section.vma);
-    }
-  var mem = new ByteMemoryArea(addrSection, dis.section.bytes);
-  var pc = arch.CreateImageReader(mem, (long)offset);
-  ulong n = dis.section.size - offset;
-  pc_addr = bb.start;
-  bb.end = bb.start;
-  bb.section = dis.section;
-  ndisassembled = 0;
-  only_nop = false;
-  var dasm = arch.CreateDisassembler(pc) //$HOw did I know that, huh.
-                .GetEnumerator();
-  while (dasm.MoveNext()) {
-    var cs_ins = (X86Instruction) dasm.Current;
-    if(cs_ins.Mnemonic == Mnemonic.illegal) {
-      bb.invalid = true;
-      bb.end += 1;
-      break;
-    }
-    if(cs_ins.Length == 0) {
-      break;
-    }
+            offset = bb.start - dis.section.vma;
+            if ((bb.start < dis.section.vma) || (offset >= dis.section.size))
+            {
+                Log.print_err("basic block address points outside of section '{0}'", dis.section.name);
+                goto fail;
+            }
+            if (!arch.TryParseAddress(dis.section.vma.ToString("X"), out var addrSection))
+            {
+                Log.print_err("Lolwut: {0:X}", dis.section.vma);
+            }
+            var mem = new ByteMemoryArea(addrSection, dis.section.bytes);
+            var pc = arch.CreateImageReader(mem, (long)offset);
+            ulong n = dis.section.size - offset;
+            pc_addr = bb.start;
+            bb.end = bb.start;
+            bb.section = dis.section;
+            ndisassembled = 0;
+            only_nop = false;
+            foreach (X86Instruction cs_ins in arch.CreateDisassembler(pc))
+            {
+                if (cs_ins.Mnemonic == Mnemonic.illegal)
+                {
+                    bb.invalid = true;
+                    bb.end += 1;
+                    break;
+                }
+                if (cs_ins.Length == 0)
+                {
+                    break;
+                }
 
-    trap  = is_cs_trap_ins(cs_ins);
-    nop   = is_cs_nop_ins(cs_ins) 
-            /* Visual Studio sometimes places semantic nops at the function start */
-            || (is_cs_semantic_nop_ins(cs_ins) && (bin.type != Binary.BinaryType.BIN_TYPE_PE))
-            /* Visual Studio uses int3 for padding */
-            || (trap && (bin.type == Binary.BinaryType.BIN_TYPE_PE));
-    ret   = is_cs_ret_ins(cs_ins);
-    jmp   = is_cs_unconditional_jmp_ins(cs_ins) || is_cs_conditional_cflow_ins(cs_ins);
-    cond  = is_cs_conditional_cflow_ins(cs_ins);
-    cflow = is_cs_cflow_ins(cs_ins);
-    call  = is_cs_call_ins(cs_ins);
-    priv  = is_cs_privileged_ins(cs_ins);
+                trap = is_cs_trap_ins(cs_ins);
+                nop = is_cs_nop_ins(cs_ins)
+                        /* Visual Studio sometimes places semantic nops at the function start */
+                        || (is_cs_semantic_nop_ins(cs_ins) && (bin.type != Binary.BinaryType.BIN_TYPE_PE))
+                        /* Visual Studio uses int3 for padding */
+                        || (trap && (bin.type == Binary.BinaryType.BIN_TYPE_PE));
+                ret = is_cs_ret_ins(cs_ins);
+                jmp = is_cs_unconditional_jmp_ins(cs_ins) || is_cs_conditional_cflow_ins(cs_ins);
+                cond = is_cs_conditional_cflow_ins(cs_ins);
+                cflow = is_cs_cflow_ins(cs_ins);
+                call = is_cs_call_ins(cs_ins);
+                priv = is_cs_privileged_ins(cs_ins);
 
-    if(ndisassembled == 0 && nop) only_nop = true; /* group nop instructions together */
-    if(!only_nop && nop) break;
-    if(only_nop && !nop) break;
+                if (ndisassembled == 0 && nop) only_nop = true; /* group nop instructions together */
+                if (!only_nop && nop) break;
+                if (only_nop && !nop) break;
 
-    ndisassembled++;
+                ndisassembled++;
 
-    bb.end += (uint)cs_ins.Length;
-    var ins = new Instruction();
-    bb.insns.Add(cs_ins);
-    if(priv) {
-      bb.privileged = true;
-    }
-    if(nop) {
-      bb.padding = true;
-    }
-    if(trap) {
-      bb.trap = true;
-    }
-    /*
-    if(nop)   ins.flags |= Instruction::INS_FLAG_NOP;
-    if(ret)   ins.flags |= Instruction::INS_FLAG_RET;
-    if(jmp)   ins.flags |= Instruction::INS_FLAG_JMP;
-    if(cond)  ins.flags |= Instruction::INS_FLAG_COND;
-    if(cflow) ins.flags |= Instruction::INS_FLAG_CFLOW;
-    if(call)  ins.flags |= Instruction::INS_FLAG_CALL;
+                bb.end += (uint)cs_ins.Length;
+                bb.insns.Add(cs_ins);
+                if (priv)
+                {
+                    bb.privileged = true;
+                }
+                if (nop)
+                {
+                    bb.padding = true;
+                }
+                if (trap)
+                {
+                    bb.trap = true;
+                }
+                /*
+                if(nop)   ins.flags |= Instruction::INS_FLAG_NOP;
+                if(ret)   ins.flags |= Instruction::INS_FLAG_RET;
+                if(jmp)   ins.flags |= Instruction::INS_FLAG_JMP;
+                if(cond)  ins.flags |= Instruction::INS_FLAG_COND;
+                if(cflow) ins.flags |= Instruction::INS_FLAG_CFLOW;
+                if(call)  ins.flags |= Instruction::INS_FLAG_CALL;
 
-    for(i = 0; i < cs_ins.detail.x86.op_count; i++) {
-      cs_op = &cs_ins.detail.x86.operands[i];
-      ins.operands.Add(new Operand());
-      op = &ins.operands.back();
-      op.type = cs_to_nucleus_op_type(cs_op.type);
-      op.size = cs_op.size;
-      if(op.type == Operand::OP_TYPE_IMM) {
-        op.x86_value.imm = cs_op.imm;
-      } else if(op.type == Operand::OP_TYPE_REG) {
-        op.x86_value.reg = cs_op.reg;
-        if(cflow) ins.flags |= Instruction::INS_FLAG_INDIRECT;
-      } else if(op.type == Operand::OP_TYPE_FP) {
-        op.x86_value.fp = 0;
-      } else if(op.type == Operand::OP_TYPE_MEM) {
-        op.x86_value.mem.segment = cs_op.mem.segment;
-        op.x86_value.mem.base    = cs_op.mem.base;
-        op.x86_value.mem.index   = cs_op.mem.index;
-        op.x86_value.mem.scale   = cs_op.mem.scale;
-        op.x86_value.mem.disp    = cs_op.mem.disp;
-        if(cflow) ins.flags |= Instruction::INS_FLAG_INDIRECT;
-      }
-    }
+                for(i = 0; i < cs_ins.detail.x86.op_count; i++) {
+                  cs_op = &cs_ins.detail.x86.operands[i];
+                  ins.operands.Add(new Operand());
+                  op = &ins.operands.back();
+                  op.type = cs_to_nucleus_op_type(cs_op.type);
+                  op.size = cs_op.size;
+                  if(op.type == Operand::OP_TYPE_IMM) {
+                    op.x86_value.imm = cs_op.imm;
+                  } else if(op.type == Operand::OP_TYPE_REG) {
+                    op.x86_value.reg = cs_op.reg;
+                    if(cflow) ins.flags |= Instruction::INS_FLAG_INDIRECT;
+                  } else if(op.type == Operand::OP_TYPE_FP) {
+                    op.x86_value.fp = 0;
+                  } else if(op.type == Operand::OP_TYPE_MEM) {
+                    op.x86_value.mem.segment = cs_op.mem.segment;
+                    op.x86_value.mem.base    = cs_op.mem.base;
+                    op.x86_value.mem.index   = cs_op.mem.index;
+                    op.x86_value.mem.scale   = cs_op.mem.scale;
+                    op.x86_value.mem.disp    = cs_op.mem.disp;
+                    if(cflow) ins.flags |= Instruction::INS_FLAG_INDIRECT;
+                  }
+                }
 
-    for(i = 0; i < cs_ins.detail.groups_count; i++) {
-      if(is_cs_cflow_group(cs_ins.detail.groups[i])) {
-        for(j = 0; j < cs_ins.detail.x86.op_count; j++) {
-          cs_op = &cs_ins.detail.x86.operands[j];
-          if(cs_op.type == X86_OP_IMM) {
-            ins.target = cs_op.imm;
-          }
-        }
-      }
-    }
-    */
-    if(cflow) {
-      /* end of basic block */
-      break;
-    }
-  }
+                for(i = 0; i < cs_ins.detail.groups_count; i++) {
+                  if(is_cs_cflow_group(cs_ins.detail.groups[i])) {
+                    for(j = 0; j < cs_ins.detail.x86.op_count; j++) {
+                      cs_op = &cs_ins.detail.x86.operands[j];
+                      if(cs_op.type == X86_OP_IMM) {
+                        ins.target = cs_op.imm;
+                      }
+                    }
+                  }
+                }
+                */
+                if (cflow)
+                {
+                    /* end of basic block */
+                    break;
+                }
+            }
 
-  if(ndisassembled == 0) {
-    bb.invalid = true;
-    bb.end += 1; /* ensure forward progress */
-  }
+            if (ndisassembled == 0)
+            {
+                bb.invalid = true;
+                bb.end += 1; /* ensure forward progress */
+            }
 
-  return true;
+            return true;
 
-fail:
-  return false;
-
-cleanup:
-  return false;
+            fail:
+            return false;
         }
     }
 }

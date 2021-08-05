@@ -14,10 +14,10 @@ namespace Nucleus
         //void print_function_summaries (FILE *out);
 
         public Binary binary;
-        public List<BB> entry;
-        public List<Function> functions;
-        public SortedList<ulong, BB> start2bb;
-        public SortedList<ulong, BB> bad_bbs;
+        public List<BB> entry = new();
+        public List<Function> functions = new();
+        public SortedList<ulong, BB> start2bb = new();
+        public SortedList<ulong, BB> bad_bbs = new();
 
         //private:
         //  void analyze_addrtaken_x86 ();

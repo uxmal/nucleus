@@ -77,18 +77,22 @@ namespace Nucleus
         public byte scale;
     }
 
+    [Flags]
+    public enum InstructionFlags : short
+    {
+        INS_FLAG_CFLOW = 0x001,
+        INS_FLAG_COND = 0x002,
+        INS_FLAG_INDIRECT = 0x004,
+        INS_FLAG_JMP = 0x008,
+        INS_FLAG_CALL = 0x010,
+        INS_FLAG_RET = 0x020,
+        INS_FLAG_NOP = 0x040
+    }
+
+    /*
     public partial class Instruction {
 
-        [Flags]
-        public enum InstructionFlags : short {
-            INS_FLAG_CFLOW = 0x001,
-            INS_FLAG_COND = 0x002,
-            INS_FLAG_INDIRECT = 0x004,
-            INS_FLAG_JMP = 0x008,
-            INS_FLAG_CALL = 0x010,
-            INS_FLAG_RET = 0x020,
-            INS_FLAG_NOP = 0x040
-        };
+
 
         public Instruction() { id = 0;  start = 0; size = 0; addr_size = 0; target = 0; flags = 0; invalid = false; privileged = false; trap = false; }
         public Instruction(Instruction i) {
@@ -108,7 +112,6 @@ namespace Nucleus
         public bool privileged;
         public bool trap;
     }
-
-
+    */
 }
 

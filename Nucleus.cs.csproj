@@ -10,6 +10,10 @@
     <LangVersion>9.0</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="*.cc" />
+    <None Remove="*.h" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Reko.Decompiler.Runtime" Version="0.9.3" />
   </ItemGroup>
 </Project>

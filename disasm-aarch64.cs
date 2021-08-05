@@ -255,13 +255,13 @@ nucleus_disasm_bb_aarch64(Binary bin, DisasmSection dis, BB bb)
     ins.op_str     = op_str(cs_ins);
     ins.privileged = priv;
     ins.trap       = trap;
-    if(nop)   ins.flags |= Instruction.InstructionFlags.INS_FLAG_NOP;
-    if(ret)   ins.flags |= Instruction.InstructionFlags.INS_FLAG_RET;
-    if(jmp)   ins.flags |= Instruction.InstructionFlags.INS_FLAG_JMP;
-    if(cond)  ins.flags |= Instruction.InstructionFlags.INS_FLAG_COND;
-    if(cflow) ins.flags |= Instruction.InstructionFlags.INS_FLAG_CFLOW;
-    if(call)  ins.flags |= Instruction.InstructionFlags.INS_FLAG_CALL;
-    if(indir) ins.flags |= Instruction.InstructionFlags.INS_FLAG_INDIRECT;
+    if(nop)   ins.flags |= InstructionFlags.INS_FLAG_NOP;
+    if(ret)   ins.flags |= InstructionFlags.INS_FLAG_RET;
+    if(jmp)   ins.flags |= InstructionFlags.INS_FLAG_JMP;
+    if(cond)  ins.flags |= InstructionFlags.INS_FLAG_COND;
+    if(cflow) ins.flags |= InstructionFlags.INS_FLAG_CFLOW;
+    if(call)  ins.flags |= InstructionFlags.INS_FLAG_CALL;
+    if(indir) ins.flags |= InstructionFlags.INS_FLAG_INDIRECT;
 
     for(i = 0; i < cs_ins.Operands.Length; i++) {
       cs_op = cs_ins.Operands[i];
@@ -278,7 +278,7 @@ nucleus_disasm_bb_aarch64(Binary bin, DisasmSection dis, BB bb)
         op.x86_value.aarch64_value.mem.@base    = cs_op.mem.@base;
         op.aarch64_value.mem.index   = cs_op.mem.index;
         op.aarch64_value.mem.disp    = cs_op.mem.disp;
-        if(cflow) ins.flags |= Instruction.InstructionFlags.INS_FLAG_INDIRECT;
+        if(cflow) ins.flags |= InstructionFlags.INS_FLAG_INDIRECT;
       }
     }
 
