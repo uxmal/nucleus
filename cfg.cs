@@ -34,7 +34,7 @@ namespace Nucleus
                 if (!cc.addrtaken)
                 {
                     cc.addrtaken = true;
-                    Log.verbose(3, "marking addrtaken bb@0x%016jx", cc.start);
+                    Log.verbose(3, "marking addrtaken bb@0x{0:X16}", cc.start);
                 }
             }
         }
@@ -1098,14 +1098,14 @@ void expand_function(Function f, BB bb)
 
             if (this.entry.Count > 0) {
         /* entry point already known */
-                Log.verbose(3, "cfg entry point@0x%016jx", this.entry.First().start);
-        return;
-    }
+                Log.verbose(3, "cfg entry point@0x{0:X16}", this.entry.First().start);
+                return;
+            }
 
             Log.verbose(1, "scanning for cfg entry point");
 
             entry = 0;
-            Log.verbose(1, "cfg entry point@0x%016jx", entry);
+            Log.verbose(1, "cfg entry point@0x{0:X16}", entry);
         }
 
 
@@ -1137,9 +1137,6 @@ void expand_function(Function f, BB bb)
 
         void detect_bad_bbs()
         {
-            BB cc;
-            int offset;
-
             /* This improves accuracy for code with inline data (otherwise it does nothing) */
 
             List<BB> blacklist = this.bad_bbs.Values
@@ -1149,9 +1146,9 @@ void expand_function(Function f, BB bb)
             /* Mark BBs that may fall through to a blacklisted block as invalid */
             foreach (var bb in blacklist) {
                 bool invalid = true;
-                cc = bb;
+                BB cc = bb;
                 while (invalid) {
-                    cc = get_bb(cc.start - 1, out offset);
+                    cc = get_bb(cc.start - 1, out int offset);
                     if (cc == null)
                         break;
                     var flags = cc.insns[^1].flags();
@@ -1276,6 +1273,8 @@ void expand_function(Function f, BB bb)
 
             foreach (var dis in disasm)
             {
+                int nvalid = dis.BBs.Count(b => !b.invalid);
+
                 foreach (var bb in dis.BBs)
                 {
                     if (bb.invalid)
@@ -1295,14 +1294,20 @@ void expand_function(Function f, BB bb)
                 }
             }
 
-    /* Link basic blocks by direct and fallthrough edges */
+            /* Link basic blocks by direct and fallthrough edges */
             foreach (var dis in disasm) {
                 foreach (var bb in dis.BBs) {
-                    var flags = bb.insns.Last().flags();
-                    if ((flags & InstructionFlags.INS_FLAG_CALL) != 0 || (flags & InstructionFlags.INS_FLAG_JMP) != 0) {
+                    if (bb.insns.Count == 0)
+                        continue;
+                    var last = bb.insns[^1];
+                    var flags = last.flags();
+                    if ((flags & (InstructionFlags.INS_FLAG_CALL|InstructionFlags.INS_FLAG_JMP)) != 0) {
                         if ((flags & InstructionFlags.INS_FLAG_INDIRECT) == 0) {
                             var aaddr = bb.insns[^1].target();
-                            link_bbs(bb.insns.Last().edge_type(), bb, aaddr.ToLinear());
+                            if (aaddr is not null) //$BUG: x86 return statements 
+                            {
+                                link_bbs(bb.insns[^1].edge_type(), bb, aaddr.ToLinear());
+                            }
                         }
                         if ((flags & InstructionFlags.INS_FLAG_CALL) != 0 || (flags & InstructionFlags.INS_FLAG_COND) != 0) {
                             link_bbs(Edge.EdgeType.EDGE_TYPE_FALLTHROUGH, bb, bb.end);
@@ -1315,13 +1320,13 @@ void expand_function(Function f, BB bb)
         }
     }
 
-    analyze_addrtaken();
-    find_switches();
-    verify_padding();
-    detect_bad_bbs();
+            analyze_addrtaken();
+            find_switches();
+            verify_padding();
+            detect_bad_bbs();
 
-    find_functions();
-    find_entry();
+            find_functions();
+            find_entry();
 
             Log.verbose(1, "cfg generation complete");
 
