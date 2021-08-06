@@ -61,15 +61,25 @@ namespace Nucleus
         public List<Edge> ancestors;
         public List<Edge> targets;
 
-        public void print(TextWriter @out)
+        public override string ToString()
         {
-            @out.WriteLine("BB @0x{0:X16} (score {1,6}) {2}{3}{4}{5} {{",
+            return summary();
+        }
+
+        private string summary()
+        {
+            return string.Format("BB @0x{0:X16} (score {1,6}) {2}{3}{4}{5} {{",
                     start,
                     score,
                     invalid ? "i" : "-",
                     privileged ? "p" : "-",
-                    addrtaken ? "a" : "-", 
+                    addrtaken ? "a" : "-",
                     padding ? "n" : "-");
+        }
+
+        public void print(TextWriter @out)
+        {
+            @out.WriteLine(summary());
             if (invalid)
             {
                 @out.WriteLine("  0x{0:X16}  (bad)", start);
@@ -94,7 +104,7 @@ namespace Nucleus
                 @out.WriteLine("--T targets:");
                 foreach (var e in targets)
                 {
-                    @out.WriteLine("--T 0x%016jx (%s)", e.dst.start + (uint) e.offset, e.type2str());
+                    @out.WriteLine("--T 0x{0} ({1})", e.dst.start + (uint) e.offset, e.type2str());
                 }
             }
             @out.WriteLine("}");
