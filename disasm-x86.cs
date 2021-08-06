@@ -7,26 +7,15 @@ using System.Collections.Generic;
 
 namespace Nucleus
 {
-    using RekoInstruction = Reko.Arch.X86.X86Instruction;
-    using MemoryOperand = Reko.Arch.X86.MemoryOperand;
-    using Mnemonic = Reko.Arch.X86.Mnemonic;
-
     public partial class X86 {
 
-        static bool is_cs_nop_ins(RekoInstruction ins)
+        static bool is_cs_nop_ins(X86Instruction ins)
         {
-            switch (ins.Mnemonic) {
-            case Mnemonic.nop:
-            case Mnemonic.fnop:
-                return true;
-            default:
-                return false;
-            }
+            return ins.InstructionClass.HasFlag(InstrClass.Padding);
         }
 
 
-        static bool
-        is_cs_semantic_nop_ins(RekoInstruction ins)
+        static bool is_cs_semantic_nop_ins(X86Instruction ins)
         {
 
             /* XXX: to make this truly platform-independent, we need some real
@@ -72,7 +61,7 @@ namespace Nucleus
         }
 
         static bool
-        is_cs_trap_ins(RekoInstruction ins)
+        is_cs_trap_ins(X86Instruction ins)
         {
             switch (ins.Mnemonic) {
             //case Mnemonic.int3:
@@ -84,119 +73,48 @@ namespace Nucleus
         }
 
 
-        static bool
-        is_cs_cflow_group(InstrClass g)
+        static bool is_cs_cflow_ins(X86Instruction ins)
         {
-            return (g & InstrClass.Transfer) != 0;
+            return ins.InstructionClass.HasFlag(InstrClass.Transfer);
         }
 
 
         static bool
-        is_cs_cflow_ins(RekoInstruction ins)
+        is_cs_call_ins(X86Instruction ins)
         {
-            return is_cs_cflow_group(ins.InstructionClass);
+            return ins.InstructionClass.HasFlag(InstrClass.Call);
         }
 
 
         static bool
-        is_cs_call_ins(RekoInstruction ins)
+        is_cs_ret_ins(X86Instruction ins)
         {
-            switch (ins.Mnemonic) {
-            case Mnemonic.call:
-                return true;
-            default:
-                return false;
-            }
+            return ins.InstructionClass.HasFlag(InstrClass.Return);
         }
 
 
         static bool
-        is_cs_ret_ins(RekoInstruction ins)
+        is_cs_unconditional_jmp_ins(X86Instruction ins)
         {
-            switch (ins.Mnemonic) {
-            case Mnemonic.ret:
-            case Mnemonic.retf:
-                return true;
-            default:
-                return false;
-            }
+            const InstrClass TCCR = InstrClass.ConditionalTransfer | InstrClass.Return | InstrClass.Call;
+            return (ins.InstructionClass & TCCR) == InstrClass.Transfer;
         }
 
 
-        static bool
-        is_cs_unconditional_jmp_ins(RekoInstruction ins)
+        static bool is_cs_conditional_cflow_ins(X86Instruction ins)
         {
-            switch (ins.Mnemonic) {
-            case Mnemonic.jmp:
-                return true;
-            default:
-                return false;
-            }
+            const InstrClass CT = InstrClass.ConditionalTransfer;
+            return (ins.InstructionClass & CT) == CT;
         }
 
 
-        static bool
-        is_cs_conditional_cflow_ins(RekoInstruction ins)
+        static bool is_cs_privileged_ins(X86Instruction ins)
         {
-            switch (ins.Mnemonic) {
-            case Mnemonic.jnc:
-            case Mnemonic.ja:
-            case Mnemonic.jbe:
-            case Mnemonic.jc:
-            case Mnemonic.jcxz:
-            case Mnemonic.jecxz:
-            case Mnemonic.jz:
-            case Mnemonic.jge:
-            case Mnemonic.jg:
-            case Mnemonic.jle:
-            case Mnemonic.jl:
-            case Mnemonic.jnz:
-            case Mnemonic.jno:
-            case Mnemonic.jpo:
-            case Mnemonic.jns:
-            case Mnemonic.jo:
-            case Mnemonic.jpe:
-            case Mnemonic.jrcxz:
-            case Mnemonic.js:
-                return true;
-            case Mnemonic.jmp:
-            default:
-                return false;
-            }
+            return ins.InstructionClass.HasFlag(InstrClass.Privileged);
         }
 
 
-        static bool
-        is_cs_privileged_ins(RekoInstruction ins)
-        {
-            switch (ins.Mnemonic) {
-            case Mnemonic.hlt:
-            case Mnemonic.@in:
-            case Mnemonic.insb:
-            case Mnemonic.ins:
-            case Mnemonic.@out:
-            case Mnemonic.outsb:
-            case Mnemonic.outs:
-            case Mnemonic.rdmsr:
-            case Mnemonic.wrmsr:
-            case Mnemonic.rdpmc:
-            case Mnemonic.rdtsc:
-            case Mnemonic.lgdt:
-            case Mnemonic.lldt:
-            case Mnemonic.ltr:
-            case Mnemonic.lmsw:
-            case Mnemonic.clts:
-            case Mnemonic.invd:
-            case Mnemonic.invlpg:
-            case Mnemonic.wbinvd:
-                return true;
-            default:
-                return false;
-            }
-        }
-
-
-        public static IProcessorArchitecture create_disassembler(Binary bin)
+        public static IProcessorArchitecture create_architecture(Binary bin)
         {
             var options = new Dictionary<string, object>();
             switch (bin.bits)
@@ -250,6 +168,10 @@ namespace Nucleus
                     break;
                 }
                 if (cs_ins.Length == 0)
+                {
+                    break;
+                }
+                if (dis.addrmap.addr_type(cs_ins.Address.ToLinear()).HasFlag(DisasmRegion.INS_START))
                 {
                     break;
                 }
