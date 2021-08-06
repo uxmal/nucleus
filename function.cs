@@ -24,7 +24,7 @@ namespace Nucleus
 
             if (entry.Count == 0)
             {
-                @out.WriteLine("function %ju: start@0x%016jx end@0x%016jx (entry point unknown)", id, start, end);
+                @out.WriteLine("function {0}: start@0x{1:X16} end@0x{2:X16} (entry point unknown)", id, start, end);
             }
             else
             {
@@ -46,14 +46,14 @@ namespace Nucleus
                     }
                     else
                     {
-                        @out.WriteLine("/-- 0x%016jx", entry_bb.start + offset);
+                        @out.WriteLine("/-- 0x{0:X16}", entry_bb.start + offset);
                     }
                     i++;
                 }
             }
             foreach (var bb in BBs)
             {
-                @out.WriteLine("    BB@0x%016jx\n", bb.start);
+                @out.WriteLine("    BB@{0:X16}", bb.start);
             }
         }
 
@@ -65,7 +65,7 @@ namespace Nucleus
 
             if (entry.Count == 0)
             {
-                @out.WriteLine("0x0\t\t\t%ju", end - start);
+                @out.WriteLine("0x{0:X16}\t{1}", 0, end - start);
             }
             else
             {
@@ -75,7 +75,7 @@ namespace Nucleus
                 {
                     if (e.type == Edge.EdgeType.EDGE_TYPE_CALL) offset = e.offset;
                 }
-                @out.WriteLine("0x%016jx\t%ju", entry_bb.start + (uint)offset, (end - entry_bb.start));
+                @out.WriteLine("0x{0:X16}\t{1}", entry_bb.start + (uint)offset, (end - entry_bb.start));
             }
         }
 

@@ -77,7 +77,6 @@ namespace Nucleus
 
         public DisasmRegion get_addr_type(ulong addr)
         {
-            Debug.Assert(contains(addr));
             if (!contains(addr))
             {
                 return DisasmRegion.UNMAPPED;
@@ -87,6 +86,7 @@ namespace Nucleus
                 return addrmap[addr];
             }
         }
+
         public DisasmRegion addr_type(ulong addr) { return get_addr_type(addr); }
 
 
@@ -184,9 +184,8 @@ namespace Nucleus
                     dis.addrmap.insert(vma);
                 }
             }
-            bin.create_reko_disassembler();
+            bin.create_reko_architecture();
             Log.verbose(1, "disassembler initialized");
-
             return 0;
         }
 
@@ -290,37 +289,26 @@ namespace Nucleus
         }
 
 
-        static int
-        nucleus_disasm(Binary bin, List<DisasmSection> disasm)
+        static int nucleus_disasm(Binary bin, List<DisasmSection> disasm)
         {
-            int ret;
-
             if (init_disasm(bin, disasm) < 0)
             {
-                goto fail;
+                return -1;
             }
 
             foreach (var dis in disasm)
             {
                 if (nucleus_disasm_section(bin, dis) < 0)
                 {
-                    goto fail;
+                    return -1;
                 }
             }
 
             if (fini_disasm(bin, disasm) < 0)
             {
-                goto fail;
+                return -1;
             }
-
-            ret = 0;
-            goto cleanup;
-
-            fail:
-            ret = -1;
-
-            cleanup:
-            return ret;
+            return 0;
         }
     }
 }

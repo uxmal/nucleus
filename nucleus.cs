@@ -44,7 +44,7 @@ namespace Nucleus
                     for (i = 0; i < bin.symbols.Count; i++)
                     {
                         sym = bin.symbols[i];
-                        Log.verbose(1, "  %-40s 0x%016jx %s",
+                        Log.verbose(1, "  {0,-40} 0x{1:X16} {2}",
                                 sym.name, sym.addr,
                                 (sym.type & Symbol.SymbolType.SYM_TYPE_FUNC) != 0 ? "FUNC" : "");
                     }

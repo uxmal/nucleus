@@ -64,13 +64,12 @@ namespace Nucleus
         static int
         export_cfg2dot(string fname, CFG cfg)
         {
-            TextWriter f;
             BB bb;
 
-            f = File.CreateText(fname);
+            using TextWriter f = File.CreateText(fname);
             if (f == null)
             {
-                Log.print_err("cannot open file '%s' for writing", fname);
+                Log.print_err("cannot open file '{0}' for writing", fname);
                 return -1;
             }
 
@@ -81,11 +80,10 @@ namespace Nucleus
                 bb = kv.Value;
                 foreach (var e in bb.targets)
                 {
-                    f.WriteLine("bb_%jx . bb_%jx [ label=\"%s\" ];", e.src.start, e.dst.start, e.type2str());
+                    f.WriteLine("bb_{0} -> bb_{1} [ label=\"{2}\" ];", e.src.start, e.dst.start, e.type2str());
                 }
             }
             f.WriteLine("}");
-            f.Close();
             return 0;
         }
     }

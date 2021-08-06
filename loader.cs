@@ -76,12 +76,12 @@ namespace Nucleus
         public List<Section> sections = new();
         public List<Symbol> symbols = new();
 
-        public void create_reko_disassembler()
+        public void create_reko_architecture()
         {
             switch (arch)
             {
             case BinaryArch.ARCH_X86:
-                reko_arch = X86.create_disassembler(this);
+                reko_arch = X86.create_architecture(this);
                 break;
             default:
                 Log.print_err("Reko support for {0} not implemented yet.", arch);
