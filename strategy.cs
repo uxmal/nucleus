@@ -34,16 +34,8 @@ namespace Nucleus
             {
                 if (parent == null)
                 {
-                    try
-                    {
-                        mutants = new BB[] { new BB() };
-                        mutants[0] = new BB();
-                    }
-                    catch (OutOfMemoryException)
-                    {
-                        Log.print_err("out of memory");
-                        return 0;
-                    }
+                    mutants = new BB[] { new BB() };
+                    mutants[0] = new BB();
                     /* start disassembling at the start of the section */
                     mutants[0].set(dis.section.vma, 0);
                 }
@@ -71,6 +63,7 @@ namespace Nucleus
                 return len;
             }
         }
+
         /*******************************************************************************
          **                       strategy function: recursive                        **
          ******************************************************************************/
@@ -124,15 +117,7 @@ namespace Nucleus
                 uint n = 0;
                 if (parent == null)
                 {
-                    try
-                    {
-                        mutants = new BB[max_mutants];
-                    }
-                    catch (OutOfMemoryException)
-                    {
-                        Log.print_err("out of memory");
-                        return 0;
-                    }
+                    mutants = new BB[max_mutants];
 
                     /* first guess for BBs are the entry point and function symbols if available, 
                      * or the section start address otherwise */
@@ -188,17 +173,67 @@ namespace Nucleus
         }
 
         /*******************************************************************************
+         **                       strategy function: shingle                          **
+         ******************************************************************************/
+        public class shingle_strategy : Strategy
+        {
+            public override uint mutate_function(DisasmSection dis, BB parent, ref BB[] mutants)
+            {
+                if (parent is null)
+                {
+                    mutants = new BB[] { new BB() };
+                    mutants[0] = new BB();
+                    // start disassembling at the start of the section 
+                    mutants[0].set(dis.section.vma, 0);
+                    return 1;
+                }
+                var newMutants = new List<BB>(mutants);
+                foreach (var bb in mutants)
+                {
+                    if (dis.section.contains(parent.end))
+                    {
+                        // next BB is directly after the current BB
+                        bb.set(parent.end, 0);
+                        newMutants.Add(bb);
+                        var addr = bb.start + 1;
+                        var flags = dis.addrmap.addr_type(addr);
+                        if (flags != DisasmRegion.UNMAPPED && flags.HasFlag(DisasmRegion.INS_START))
+                        {
+                            // start a "shingle" at the address after the start of the previous instr.
+                            var cc = new BB();
+                            cc.start = addr;
+                            newMutants.Add(cc);
+                        }
+                    }
+                }
+                mutants = newMutants.ToArray();
+                return (uint) mutants.Length;
+            }
+
+            public override double score_function(DisasmSection sec, BB bb)
+            {
+                return 1.0;
+            }
+
+            public override int select_function(DisasmSection sec, BB[] bb, int n)
+            {
+                foreach (var cc in bb)
+                {
+                    cc.alive = true;
+                }
+                return n;
+            }
+        }
+
+        /*******************************************************************************
          **                            dispatch functions                             **
          ******************************************************************************/
-        static (string, Type)[] strategy_functions = {
-            ("linear", typeof(linear_strategy)),
-            ("recursive", typeof(recursive_strategy))
+        static (string, Type, string)[] strategy_functions = {
+            ("linear", typeof(linear_strategy), "Linear disassembly"),
+            ("recursive", typeof(recursive_strategy), "Recursive disassembly (incomplete implementation, not recommended)"),
+            ("shingle", typeof(shingle_strategy), "Shingle disassembly")
         };
 
-        string[] strategy_functions_doc = {
-  /* linear     */ "Linear disassembly",
-  /* recursive  */ "Recursive disassembly (incomplete implementation, not recommended)",
-        };
 
 
         static Type get_strategy_function_type()
