@@ -38,16 +38,17 @@ namespace Nucleus
 
         public static Edge.EdgeType edge_type(this MachineInstruction self)
         {
+            var last_op = self.Operands[^1];
             switch (self.InstructionClass & InstrClass.Transfer | InstrClass.Call) {
             case InstrClass.Transfer:
-                return self.Operands[^1] is ImmediateOperand ||
-                    self.Operands[^1] is AddressOperand
+                return last_op is ImmediateOperand ||
+                       last_op is AddressOperand
                     ? Edge.EdgeType.EDGE_TYPE_JMP
                     : Edge.EdgeType.EDGE_TYPE_JMP_INDIRECT;
             case InstrClass.Transfer | InstrClass.Call:
                 if (self.Operands.Length == 0)
                     return Edge.EdgeType.EDGE_TYPE_RET;
-                return self.Operands[^1] switch
+                return last_op switch
                 {
                     AddressOperand _ => Edge.EdgeType.EDGE_TYPE_CALL,
                     ImmediateOperand _ => Edge.EdgeType.EDGE_TYPE_CALL,

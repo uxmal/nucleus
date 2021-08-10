@@ -7,8 +7,7 @@ namespace Nucleus
 {
     public class Symbol
     {
-        public
-          enum SymbolType
+        public enum SymbolType
         {
             SYM_TYPE_UKN = 0x000,
             SYM_TYPE_FUNC = 0x001
@@ -82,6 +81,9 @@ namespace Nucleus
             {
             case BinaryArch.ARCH_X86:
                 reko_arch = X86.create_architecture(this);
+                break;
+            case BinaryArch.ARCH_MIPS:
+                reko_arch = Mips.create_architecture(this);
                 break;
             default:
                 Log.print_err("Reko support for {0} not implemented yet.", arch);

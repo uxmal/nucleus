@@ -11,8 +11,17 @@ using System.Linq;
 
 namespace Nucleus
 {
+
     public partial class CFG
     {
+        public CFG() { }
+
+        public Binary binary;
+        public List<BB> entry = new();
+        public List<Function> functions = new();
+        public SortedList<ulong, BB> start2bb = new();
+        public SortedList<ulong, BB> bad_bbs = new();
+
         public void print_functions(TextWriter @out)
         {
             foreach (var f in this.functions) {
@@ -90,7 +99,6 @@ void analyze_addrtaken_ppc()
 void 
 analyze_addrtaken_x86()
 {
-#if NYI
             foreach (var kv in this.start2bb) {
     var bb = kv.Value;
     foreach (var ins in bb.insns) {
@@ -101,14 +109,58 @@ analyze_addrtaken_x86()
       var op_src = ins.Operands[1];
       if(((op_dst is RegisterOperand) || (op_dst is Reko.Arch.X86.MemoryOperand))) {
         if (op_src is ImmediateOperand imm)
-            mark_addrtaken(imm.Value.ToUInt64());
+        {
+                            if (this.binary.reko_arch.PointerType.BitSize == imm.Value.DataType.BitSize)
+                            {
+                                mark_addrtaken(imm.Value.ToUInt64());
+                            } else if (ins.Address.Selector.HasValue)
+                            {
+                                var addr = ins.Address.NewOffset(imm.Value.ToUInt32());
+                                mark_addrtaken(addr.ToLinear());
+                            }
+                        }
         else if (op_src is AddressOperand addr)
             mark_addrtaken(addr.Address.ToLinear());
       }
     }
   }
-#endif
 }
+
+        /* Link basic blocks by direct and fallthrough edges */
+        public void link_basic_blocks(List<DisasmSection> disasm)
+        {
+            foreach (var dis in disasm)
+            {
+                foreach (var bb in dis.BBs)
+                {
+                    if (bb.insns.Count == 0)
+                        continue;
+                    var last = bb.insns[^1];
+                    var flags = last.flags();
+                    if ((flags & (InstructionFlags.INS_FLAG_CALL | InstructionFlags.INS_FLAG_JMP)) != 0)
+                    {
+                        if ((flags & InstructionFlags.INS_FLAG_INDIRECT) == 0)
+                        {
+                            var aaddr = last.target();
+                            if (aaddr is not null) //$BUG: x86 return statements 
+                            {
+                                link_bbs(last.edge_type(), bb, aaddr.ToLinear());
+                            }
+                        }
+                        if ((flags & InstructionFlags.INS_FLAG_CALL) != 0 || (flags & InstructionFlags.INS_FLAG_COND) != 0)
+                        {
+                            link_bbs(Edge.EdgeType.EDGE_TYPE_FALLTHROUGH, bb, bb.end);
+                        }
+                    }
+                    else if ((flags & InstructionFlags.INS_FLAG_CFLOW) == 0 && !bb.padding)
+                    {
+                        /* A block that doesn't have a control flow instruction at the end;
+                         * this can happen if the next block is a nop block */
+                        link_bbs(Edge.EdgeType.EDGE_TYPE_FALLTHROUGH, bb, bb.end);
+                    }
+                }
+            }
+        }
 
 
 
@@ -142,7 +194,7 @@ analyze_addrtaken_x86()
             BB cc = null;
             for (addr = start; addr < end; addr++)
             {
-                var bb = this.get_bb(addr, out var _);
+                var (bb, _) = this.get_bb(addr);
                 if (bb is null) continue;
                 if (bb != cc)
                 {
@@ -1112,8 +1164,7 @@ void expand_function(Function f, BB bb)
         void verify_padding()
         {
             /* Fix incorrectly identified padding blocks (they turned out to be reachable) */
-            foreach (var kv in this.start2bb) {
-                var bb = kv.Value;
+            foreach (var bb in this.start2bb.Values) {
                 if (bb.trap) continue;
                 if (bb.padding && bb.ancestors.Count > 0) {
                     bool call_fallthrough = false;
@@ -1148,7 +1199,7 @@ void expand_function(Function f, BB bb)
                 bool invalid = true;
                 BB cc = bb;
                 while (invalid) {
-                    cc = get_bb(cc.start - 1, out int offset);
+                    (cc, _) = get_bb(cc.start - 1);
                     if (cc == null)
                         break;
                     var flags = cc.insns[^1].flags();
@@ -1158,7 +1209,7 @@ void expand_function(Function f, BB bb)
                     }
                     else if ((flags & InstructionFlags.INS_FLAG_CALL) != 0 || (flags & InstructionFlags.INS_FLAG_JMP) != 0)
                     {
-                        invalid = (get_bb(cc.insns[^1].target(), out offset) == null);
+                        invalid = get_bb(cc.insns[^1].target()).bb == null;
                     }
                     else if ((flags & InstructionFlags.INS_FLAG_RET) != 0)
                     {
@@ -1180,24 +1231,21 @@ void expand_function(Function f, BB bb)
             }
         }
 
-        BB get_bb(Address addr, out int offset)
+        (BB bb, int offset) get_bb(Address addr)
         {
             if (addr is null)
             {
-                offset = 0;
-                return null;
+                return (null, 0);
             }
-            return get_bb(addr.ToLinear(), out offset);
+            return get_bb(addr.ToLinear());
         }
 
-        BB get_bb(ulong addr, out int offset)
+        (BB bb, int offset) get_bb(ulong addr)
         {
-            if (this.start2bb.ContainsKey(addr)) {
-                offset = 0;
-                return this.start2bb[addr];
+            if (this.start2bb.TryGetValue(addr, out var bb)) {
+                return (bb, 0);
             } else if (start2bb.Count == 0) {
-                offset = 0;
-                return null;
+                return (null, 0);
             }
 
             int lo = 0;
@@ -1205,7 +1253,7 @@ void expand_function(Function f, BB bb)
             while (lo <= hi)
             {
                 int mid = lo + (hi - lo) / 2;
-                BB bb = this.start2bb.Values[mid];
+                bb = this.start2bb.Values[mid];
                 if (bb.start < addr)
                 {
                     hi = mid - 1;
@@ -1218,21 +1266,20 @@ void expand_function(Function f, BB bb)
                 {
                     if ((addr >= bb.start) && (addr < bb.end))
                     {
-                        offset = (int)(addr - bb.start);
-                        return bb;
+                        int offset = (int)(addr - bb.start);
+                        return (bb, offset);
                     }
                 }
             }
-            offset = 0;
-            return null;
+            return (null, 0);
         }
 
         void link_bbs(Edge.EdgeType type, BB bb, ulong target, ulong jmptab = 0)
         {
             Debug.Assert(type != Edge.EdgeType.EDGE_TYPE_NONE);
             bool is_switch = (jmptab > 0);
-            BB cc = this.get_bb(target, out int offset);
-            if (cc!= null) {
+            var (cc, offset) = this.get_bb(target);
+            if (cc != null) {
                 bb.targets.Add(new Edge(type, bb, cc, is_switch, jmptab, offset));
                 cc.ancestors.Add(new Edge(type, bb, cc, is_switch, jmptab, offset));
             }
@@ -1271,10 +1318,25 @@ void expand_function(Function f, BB bb)
 
             this.binary = bin;
 
+            classify_basic_blocks(bin, disasm);
+            link_basic_blocks(disasm);
+            analyze_addrtaken();
+            find_switches();
+            verify_padding();
+            detect_bad_bbs();
+
+            find_functions();
+            find_entry();
+
+            Log.verbose(1, "cfg generation complete");
+
+            return 0;
+        }
+
+        public void classify_basic_blocks(Binary bin, List<DisasmSection> disasm)
+        {
             foreach (var dis in disasm)
             {
-                int nvalid = dis.BBs.Count(b => !b.invalid);
-
                 foreach (var bb in dis.BBs)
                 {
                     if (bb.invalid)
@@ -1293,44 +1355,6 @@ void expand_function(Function f, BB bb)
                     this.start2bb[bb.start] = bb;
                 }
             }
-
-            /* Link basic blocks by direct and fallthrough edges */
-            foreach (var dis in disasm) {
-                foreach (var bb in dis.BBs) {
-                    if (bb.insns.Count == 0)
-                        continue;
-                    var last = bb.insns[^1];
-                    var flags = last.flags();
-                    if ((flags & (InstructionFlags.INS_FLAG_CALL|InstructionFlags.INS_FLAG_JMP)) != 0) {
-                        if ((flags & InstructionFlags.INS_FLAG_INDIRECT) == 0) {
-                            var aaddr = bb.insns[^1].target();
-                            if (aaddr is not null) //$BUG: x86 return statements 
-                            {
-                                link_bbs(bb.insns[^1].edge_type(), bb, aaddr.ToLinear());
-                            }
-                        }
-                        if ((flags & InstructionFlags.INS_FLAG_CALL) != 0 || (flags & InstructionFlags.INS_FLAG_COND) != 0) {
-                            link_bbs(Edge.EdgeType.EDGE_TYPE_FALLTHROUGH, bb, bb.end);
-                        }
-                    } else if ((flags & InstructionFlags.INS_FLAG_CFLOW) == 0 && !bb.padding) {
-                        /* A block that doesn't have a control flow instruction at the end;
-                         * this can happen if the next block is a nop block */
-                        link_bbs(Edge.EdgeType.EDGE_TYPE_FALLTHROUGH, bb, bb.end);
-            }
-        }
-    }
-
-            analyze_addrtaken();
-            find_switches();
-            verify_padding();
-            detect_bad_bbs();
-
-            find_functions();
-            find_entry();
-
-            Log.verbose(1, "cfg generation complete");
-
-            return 0;
         }
     }
 }
