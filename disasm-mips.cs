@@ -1,36 +1,37 @@
 using Reko.Arch.Mips;
+using Reko.Core;
+using Reko.Core.Machine;
+using Reko.Core.Memory;
+using System;
+using System.Collections.Generic;
 
 namespace Nucleus
 {
     public static class Mips
     {
 
-#if NYI
-        static int
-is_cs_nop_ins(MipsInstruction ins)
+        static bool is_cs_nop_ins(MipsInstruction ins)
 {
   switch(ins.Mnemonic) {
-  case Mnemonic.NOP:
-    return 1;
+  case Mnemonic.nop:
+    return true;
   default:
-    return 0;
+    return false;
   }
 }
 
 
-static int
-is_cs_trap_ins(MipsInstruction ins)
+static bool is_cs_trap_ins(MipsInstruction ins)
 {
   switch(ins.Mnemonic) {
   /* XXX: todo */
   default:
-    return 0;
+    return false;
   }
 }
 
 
-static int
-is_cs_cflow_ins(MipsInstruction ins)
+static bool is_cs_cflow_ins(MipsInstruction ins)
 {
   /* XXX: Capstone does not provide information for all generic groups
    * for mips instructions, unlike x86, so we have to do it manually.
@@ -38,208 +39,132 @@ is_cs_cflow_ins(MipsInstruction ins)
    * CS_GRP_JUMP, CS_GRP_CALL, CS_GRP_RET, CS_GRP_IRET */
 
   switch(ins.Mnemonic) {
-  case Mnemonic.J:
-  case Mnemonic.JR:
-  case Mnemonic.B:
-  case Mnemonic.BAL:
-  case Mnemonic.JAL:
-  case Mnemonic.JALR:
-  case Mnemonic.BEQ:
-  case Mnemonic.BNE:
-  case Mnemonic.BGTZ:
-  case Mnemonic.BGEZ:
-  case Mnemonic.BNEZ:
-  case Mnemonic.BEQZ:
-  case Mnemonic.BLEZ:
-  case Mnemonic.BLTZ:
-    return 1;
+  case Mnemonic.j:
+  case Mnemonic.jr:
+  case Mnemonic.b:
+  case Mnemonic.bal:
+  case Mnemonic.jal:
+  case Mnemonic.jalr:
+  case Mnemonic.beq:
+  case Mnemonic.bne:
+  case Mnemonic.bgtz:
+  case Mnemonic.bgez:
+  case Mnemonic.bnez:
+  case Mnemonic.beqz:
+  case Mnemonic.blez:
+  case Mnemonic.bltz:
+    return true;
   default:
-    return 0;
+    return false;
   }
 }
 
 
-static int
-is_cs_call_ins(MipsInstruction ins)
-{
-  switch(ins.Mnemonic) {
-  case Mnemonic.BAL:
-  case Mnemonic.JAL:
-  case Mnemonic.JALR:
-    return 1;
-  default:
-    return 0;
-  }
-}
+        static bool is_cs_call_ins(MipsInstruction ins)
+        {
+            return ins.InstructionClass.HasFlag(InstrClass.Call);
+        }
 
 
-static int
+static bool
 is_cs_ret_ins(MipsInstruction ins)
 {
   /* jr ra */
-  if(ins.Mnemonic == Mnemonic.JR
-     && ins.detail.mips.operands[0].type == MIPS_OP_REG
-     && ins.detail.mips.operands[0].reg == MIPS_REG_RA) {
-    return 1;
+  if(ins.Mnemonic == Mnemonic.jr
+     && ins.Operands[0] is RegisterOperand reg
+     && reg.Register == Registers.ra) {
+    return true;
   }
 
-  return 0;
+  return false;
 }
 
 
-static int
+static bool
 is_cs_unconditional_jmp_ins(MipsInstruction ins)
 {
-  switch(ins.Mnemonic) {
-  case Mnemonic.B:
-  case Mnemonic.J:
-    return 1;
-  case Mnemonic.JR:
-    if (ins.detail.mips.operands[0].reg != MIPS_REG_RA) {
-      return 1;
-    }
-    return 0;
-  default:
-    return 0;
-  }
+            return (ins.InstructionClass
+                & (InstrClass.Transfer | InstrClass.Call | InstrClass.Return | InstrClass.Conditional)) ==
+                InstrClass.Transfer;
 }
 
 
-static int
-is_cs_conditional_cflow_ins(MipsInstruction ins)
+static bool is_cs_conditional_cflow_ins(MipsInstruction ins)
 {
-  switch(ins.Mnemonic) {
-  case Mnemonic.BEQ:
-  case Mnemonic.BNE:
-  case Mnemonic.BGTZ:
-  case Mnemonic.BGEZ:
-  case Mnemonic.BNEZ:
-  case Mnemonic.BEQZ:
-  case Mnemonic.BLEZ:
-  case Mnemonic.BLTZ:
-    return 1;
-  default:
-    return 0;
-  }
+            return (ins.InstructionClass & InstrClass.ConditionalTransfer) ==
+                InstrClass.ConditionalTransfer;
 }
 
 
-static int
-is_cs_privileged_ins(MipsInstruction ins)
+static bool is_cs_privileged_ins(MipsInstruction ins)
 {
-  switch(ins.Mnemonic) {
-  /* XXX: todo */
-  default:
-    return 0;
-  }
+            return ins.InstructionClass.HasFlag(InstrClass.Privileged);
 }
 
 
-static int
+static bool
 is_cs_indirect_ins(MipsInstruction ins)
 {
-  /* jr rN */
-  if(ins.Mnemonic == Mnemonic.JR
-     && ins.detail.mips.operands[0].type == MIPS_OP_REG
-     && ins.detail.mips.operands[0].reg != MIPS_REG_RA) {
-    return 1;
-  }
-
-  /* jalr rN */
-  if(ins.Mnemonic == Mnemonic.JALR) {
-    return 1;
-  }
-
-  return 0;
+            return (ins.InstructionClass & (InstrClass.Transfer | InstrClass.Return)) == InstrClass.Transfer; 
 }
 
-
-static uint8_t
-cs_to_nucleus_op_type(mips_op_type op)
-{
-  switch(op) {
-  case MIPS_OP_REG:
-    return Operand::OP_TYPE_REG;
-  case MIPS_OP_IMM:
-    return Operand::OP_TYPE_IMM;
-  case MIPS_OP_MEM:
-    return Operand::OP_TYPE_MEM;
-  case MIPS_OP_INVALID:
-  default:
-    return Operand::OP_TYPE_NONE;
-  }
-}
-
-#endif
-
-        public static int
-        nucleus_disasm_bb_mips(Binary bin, DisasmSection dis, BB bb)
+        public static IProcessorArchitecture create_architecture(Binary bin)
         {
-            return -1;
-#if NYI
-            int init, ret, jmp, cflow, indir, cond, call, nop, only_nop, priv, trap, ndisassembled;
-  csh cs_dis;
-  cs_mode cs_mode_flags;
-  cs_insn *cs_ins;
-  cs_mips_op *cs_op;
-  const uint8_t *pc;
-  uint64_t pc_addr, offset;
-  size_t i, j, n;
-  Instruction *ins, *last_cflow;
-  Operand *op;
+            var options = new Dictionary<string, object>();
+            switch (bin.bits)
+            {
+            case 64:
+                options[ProcessorOption.Endianness] = "be";
+                options[ProcessorOption.WordSize] = 64;
+                return new MipsBe64Architecture(null, "", options);
+            case 32:
+                options[ProcessorOption.Endianness] = "be";
+                options[ProcessorOption.WordSize] = 32;
+                return new MipsBe32Architecture(null, "", options);
+            case 16:
+                // wut?
+                options[ProcessorOption.Endianness] = "be";
+                options[ProcessorOption.WordSize] = 32;
+                options[ProcessorOption.InstructionSet] = "nano";
+                return new MipsBe64Architecture(null, "", options);
+            default:
+                Log.print_err("unsupported bit width %u for architecture %s", bin.bits, bin.arch_str);
+                Environment.Exit(1);
+                return default!;
+            }
+        }
 
-  init   = 0;
-  cs_ins = nullptr;
-  last_cflow = nullptr;
+        public static int nucleus_disasm_bb_mips(Binary bin, DisasmSection dis, BB bb)
+        {
+            bool ret, jmp, cflow, indir, cond, call, nop, only_nop, priv, trap;
+            int ndisassembled;
+  MipsInstruction last_cflow = null;
 
-  switch(bin.bits) {
-  case 64:
-    cs_mode_flags = (cs_mode)(CS_MODE_BIG_ENDIAN | CS_MODE_64);
-    break;
-  case 32:
-    cs_mode_flags = (cs_mode)(CS_MODE_BIG_ENDIAN | CS_MODE_32);
-    break;
-  case 16:
-    cs_mode_flags = (cs_mode)(CS_MODE_BIG_ENDIAN | CS_MODE_16);
-    break;
-  default:
-    print_err("unsupported bit width %u for architecture %s", bin.bits, bin.arch_str.c_str());
-    goto fail;
-  }
 
-  if(cs_open(CS_ARCH_MIPS, cs_mode_flags, &cs_dis) != CS_ERR_OK) {
-    print_err("failed to initialize libcapstone");
-    goto fail;
-  }
-  init = 1;
-  cs_option(cs_dis, CS_OPT_DETAIL, CS_OPT_ON);
-
-  cs_ins = cs_malloc(cs_dis);
-  if(!cs_ins) {
-    print_err("out of memory");
-    goto fail;
-  }
-
-  offset = bb.start - dis.section.vma;
+  var offset = bb.start - dis.section.vma;
   if((bb.start < dis.section.vma) || (offset >= dis.section.size)) {
-    print_err("basic block address points outside of section '%s'", dis.section.name.c_str());
-    goto fail;
+    Log.print_err("basic block address points outside of section '{0}'", dis.section.name);
+    return -1;
+  }
+  var arch = bin.reko_arch;
+  if (!arch.TryParseAddress(dis.section.vma.ToString("X"), out var addrSection))
+  {
+    Log.print_err("Lolwut: {0:X}", dis.section.vma);
   }
 
-  pc = dis.section.bytes + offset;
-  n = dis.section.size - offset;
-  pc_addr = bb.start;
+  var mem = new ByteMemoryArea(addrSection, dis.section.bytes);
+  var pc = arch.CreateImageReader(mem, (long)offset);
   bb.end = bb.start;
   bb.section = dis.section;
   ndisassembled = 0;
-  only_nop = 0;
-  while(cs_disasm_iter(cs_dis, &pc, &n, &pc_addr, cs_ins)) {
-    if(cs_ins.Mnemonic == Mnemonic.INVALID) {
-      bb.invalid = 1;
+  only_nop = false;
+  foreach (MipsInstruction cs_ins in arch.CreateDisassembler(pc)) {
+    if(cs_ins.Mnemonic == Mnemonic.illegal) {
+      bb.invalid = true;
       bb.end += 1;
       break;
     }
-    if(!cs_ins.size) {
+    if(cs_ins.Length == 0) {
       break;
     }
 
@@ -253,14 +178,14 @@ cs_to_nucleus_op_type(mips_op_type op)
     priv  = is_cs_privileged_ins(cs_ins);
     indir = is_cs_indirect_ins(cs_ins);
 
-    if(!ndisassembled && nop) only_nop = 1; /* group nop instructions together */
-    if(!last_cflow && !only_nop && nop) break;
-    if(!last_cflow && only_nop && !nop) break;
+    if(ndisassembled == 0 && nop) only_nop = true; /* group nop instructions together */
+    if(last_cflow == null && !only_nop && nop) break;
+    if(last_cflow == null && only_nop && !nop) break;
 
     ndisassembled++;
 
-    bb.end += cs_ins.size;
-    bb.insns.push_back(Instruction());
+    bb.end += (uint) cs_ins.Length;
+    bb.insns.Add(cs_ins);
     if(priv) {
       bb.privileged = true;
     }
@@ -271,79 +196,65 @@ cs_to_nucleus_op_type(mips_op_type op)
       bb.trap = true;
     }
 
-    ins = &bb.insns.back();
-    ins.Mnemonic         = cs_ins.Mnemonic;
-    ins.start      = cs_ins.address;
-    ins.size       = cs_ins.size;
-    ins.mnem       = std::string(cs_ins.mnemonic);
-    ins.op_str     = std::string(cs_ins.op_str);
-    ins.privileged = priv;
-    ins.trap       = trap;
-    if(nop)   ins.flags |= Instruction::INS_FLAG_NOP;
-    if(ret)   ins.flags |= Instruction::INS_FLAG_RET;
-    if(jmp)   ins.flags |= Instruction::INS_FLAG_JMP;
-    if(cond)  ins.flags |= Instruction::INS_FLAG_COND;
-    if(cflow) ins.flags |= Instruction::INS_FLAG_CFLOW;
-    if(call)  ins.flags |= Instruction::INS_FLAG_CALL;
-    if(indir) ins.flags |= Instruction::INS_FLAG_INDIRECT;
+    var ins = bb.insns[^1];
+    //ins.Mnemonic         = cs_ins.Mnemonic;
+    //ins.start      = cs_ins.address;
+    //ins.size       = cs_ins.size;
+    //ins.mnem       = std::string(cs_ins.mnemonic);
+    //ins.op_str     = std::string(cs_ins.op_str);
+    //ins.privileged = priv;
+    //ins.trap       = trap;
+    //if(nop)   ins.flags |= Instruction.INS_FLAG_NOP;
+    //if(ret)   ins.flags |= Instruction.INS_FLAG_RET;
+    //if(jmp)   ins.flags |= Instruction.INS_FLAG_JMP;
+    //if(cond)  ins.flags |= Instruction.INS_FLAG_COND;
+    //if(cflow) ins.flags |= Instruction.INS_FLAG_CFLOW;
+    //if(call)  ins.flags |= Instruction.INS_FLAG_CALL;
+    //if(indir) ins.flags |= Instruction.INS_FLAG_INDIRECT;
 
-    for(i = 0; i < cs_ins.detail.mips.op_count; i++) {
-      cs_op = &cs_ins.detail.mips.operands[i];
-      ins.operands.push_back(Operand());
-      op = &ins.operands.back();
-      op.type = cs_to_nucleus_op_type(cs_op.type);
-      if(op.type == Operand::OP_TYPE_IMM) {
-        op.mips_value.imm = cs_op.imm;
-      } else if(op.type == Operand::OP_TYPE_REG) {
-        op.mips_value.reg = (mips_reg)cs_op.reg;
-      } else if(op.type == Operand::OP_TYPE_MEM) {
-        op.mips_value.mem.base = cs_op.mem.base;
-        op.mips_value.mem.disp = cs_op.mem.disp;
-        if(cflow) ins.flags |= Instruction::INS_FLAG_INDIRECT;
-      }
-    }
+    //for(i = 0; i < cs_ins.detail.mips.op_count; i++) {
+    //  cs_op = &cs_ins.detail.mips.operands[i];
+    //  ins.operands.push_back(Operand());
+    //  op = &ins.operands.back();
+    //  op.type = cs_to_nucleus_op_type(cs_op.type);
+    //  if(op.type == Operand::OP_TYPE_IMM) {
+    //    op.mips_value.imm = cs_op.imm;
+    //  } else if(op.type == Operand::OP_TYPE_REG) {
+    //    op.mips_value.reg = (mips_reg)cs_op.reg;
+    //  } else if(op.type == Operand::OP_TYPE_MEM) {
+    //    op.mips_value.mem.base = cs_op.mem.base;
+    //    op.mips_value.mem.disp = cs_op.mem.disp;
+    //    if(cflow) ins.flags |= Instruction::INS_FLAG_INDIRECT;
+    //  }
+    //}
 
-    if(cflow) {
-      for(j = 0; j < cs_ins.detail.mips.op_count; j++) {
-        cs_op = &cs_ins.detail.mips.operands[j];
-        if(cs_op.type == MIPS_OP_IMM) {
-          ins.target = cs_op.imm;
-        }
-      }
-    }
+    //if(cflow) {
+    //  for(j = 0; j < cs_ins.detail.mips.op_count; j++) {
+    //    cs_op = &cs_ins.detail.mips.operands[j];
+    //    if(cs_op.type == MIPS_OP_IMM) {
+    //      ins.target = cs_op.imm;
+    //    }
+    //  }
+    //}
 
     /* end of basic block occurs after delay slot of cflow instructions */
-    if(last_cflow) {
-      ins.flags = last_cflow.flags;
-      ins.target = last_cflow.target;
-      last_cflow.flags = 0;
+    if(last_cflow is not null) {
+      //cs_ins.flags = last_cflow.flags;
+      //ins.target = last_cflow.target;
+      //last_cflow.flags = 0;
       break;
     }
     if(cflow) {
-      last_cflow = ins;
+      last_cflow = cs_ins;
     }
   }
 
-  if(!ndisassembled) {
-    bb.invalid = 1;
+  if (ndisassembled == 0) {
+    bb.invalid = true;
     bb.end += 1; /* ensure forward progress */
   }
 
-  ret = ndisassembled;
-  goto cleanup;
-
-fail:
-  ret = -1;
-
-cleanup:
-  if(cs_ins) {
-    cs_free(cs_ins, 1);
-  }
-  if(init) {
-    cs_close(&cs_dis);
-  }
-  return ret;
-#endif
+  return ndisassembled;
         }
     }
 }

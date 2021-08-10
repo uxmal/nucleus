@@ -1,269 +1,163 @@
+using Reko.Arch.Arm.AArch32;
+using Reko.Core;
+using Reko.Core.Machine;
+using Reko.Core.Memory;
+using System.Collections.Generic;
+
 namespace Nucleus
 {
-
-#if NYI
-    static int
-is_cs_nop_ins(cs_insn *ins)
+    public class Arm { 
+    static bool is_cs_nop_ins(A32Instruction ins)
 {
-  switch(ins->id) {
-  case ARM_INS_NOP:
-    return 1;
-  default:
-    return 0;
-  }
+        return ins.InstructionClass.HasFlag(InstrClass.Padding);
 }
 
 
-static int
-is_cs_trap_ins(cs_insn *ins)
+static bool
+is_cs_trap_ins(A32Instruction ins)
 {
-  switch(ins->id) {
+  switch(ins.Mnemonic) {
   /* XXX: todo */
   default:
-    return 0;
+    return false;
   }
 }
 
 
-static int
-is_cs_call_ins(cs_insn *ins)
+static bool
+is_cs_call_ins(A32Instruction ins)
 {
-  switch(ins->id) {
-  case ARM_INS_BL:
-  case ARM_INS_BLX:
-    return 1;
-  default:
-    return 0;
-  }
+
+            return (ins.InstructionClass & (InstrClass.Transfer | InstrClass.Call)) == InstrClass.Call;
 }
 
 
-static int
-is_cs_ret_ins(cs_insn *ins)
+static bool
+is_cs_ret_ins(A32Instruction ins)
 {
-  size_t i;
-
-  /* bx lr */
-  if(ins->id == ARM_INS_BX
-     && ins->detail->arm.op_count == 1
-     && ins->detail->arm.operands[0].type == ARM_OP_REG
-     && ins->detail->arm.operands[0].reg == ARM_REG_LR) {
+            return ins.InstructionClass.HasFlag(InstrClass.Return);
+            /*
+  // bx lr
+  if(ins.id == ARM_INS_BX
+     && ins.detail.arm.op_count == 1
+     && ins.detail.arm.operands[0].type == ARM_OP_REG
+     && ins.detail.arm.operands[0].reg == ARM_REG_LR) {
     return 1;
   }
 
-  /* ldmfd sp!, {..., pc} */
-  if(ins->id == ARM_INS_POP) {
-    for(i = 0; i < ins->detail->arm.op_count; i++) {
-      if(ins->detail->arm.operands[i].type == ARM_OP_REG &&
-         ins->detail->arm.operands[i].reg == ARM_REG_PC) {
+  // ldmfd sp!, {..., pc}
+  if(ins.id == ARM_INS_POP) {
+    for(i = 0; i < ins.detail.arm.op_count; i++) {
+      if(ins.detail.arm.operands[i].type == ARM_OP_REG &&
+         ins.detail.arm.operands[i].reg == ARM_REG_PC) {
         return 1;
       }
     }
   }
 
-  /* mov pc, lr */
-  if(ins->id == ARM_INS_MOV
-     && ins->detail->arm.operands[0].type == ARM_OP_REG
-     && ins->detail->arm.operands[0].reg == ARM_REG_PC
-     && ins->detail->arm.operands[1].type == ARM_OP_REG
-     && ins->detail->arm.operands[1].reg == ARM_REG_LR) {
+  // mov pc, lr 
+  if(ins.id == ARM_INS_MOV
+     && ins.detail.arm.operands[0].type == ARM_OP_REG
+     && ins.detail.arm.operands[0].reg == ARM_REG_PC
+     && ins.detail.arm.operands[1].type == ARM_OP_REG
+     && ins.detail.arm.operands[1].reg == ARM_REG_LR) {
     return 1;
   }
 
-  return 0;
+  return 0;*/
 }
 
 
-static int
-is_cs_unconditional_jmp_ins(cs_insn *ins)
+static bool
+is_cs_unconditional_jmp_ins(A32Instruction ins)
 {
-  /* b rN */
-  if(ins->id == ARM_INS_B
-     && ins->detail->arm.cc == ARM_CC_AL) {
-    return 1;
-  }
-
-  /* mov pc, rN */
-  if(ins->id == ARM_INS_MOV
-     && ins->detail->arm.operands[0].type == ARM_OP_REG
-     && ins->detail->arm.operands[0].reg == ARM_REG_PC
-     && ins->detail->arm.operands[1].type == ARM_OP_REG
-     && ins->detail->arm.operands[1].reg != ARM_REG_LR) {
-    return 1;
-  }
-
-  /* ldrls pc, {...} */
-  if(ins->id == ARM_INS_LDR
-     && ins->detail->arm.operands[0].type == ARM_OP_REG
-     && ins->detail->arm.operands[0].reg == ARM_REG_PC) {
-    return 1;
-  }
-
-  return 0;
+            return (ins.InstructionClass & InstrClass.ConditionalTransfer | InstrClass.Call) ==
+                InstrClass.Transfer;
 }
 
 
-static int
-is_cs_conditional_cflow_ins(cs_insn *ins)
+        static bool is_cs_conditional_cflow_ins(A32Instruction ins)
+        {
+            return (ins.InstructionClass | InstrClass.ConditionalTransfer) ==
+                            InstrClass.ConditionalTransfer;
+        }
+
+
+static bool
+is_cs_cflow_ins(A32Instruction ins)
 {
-  switch(ins->id) {
-  case ARM_INS_B:
-  case ARM_INS_BL:
-  case ARM_INS_BLX:
-    if (ins->detail->arm.cc != ARM_CC_AL) {
-      return 1;
-    }
-    return 0;
-  default:
-    return 0;
-  }
+            return ins.InstructionClass.HasFlag(InstrClass.Transfer);
 }
 
 
-static int
-is_cs_cflow_ins(cs_insn *ins)
+static bool is_cs_indirect_ins(A32Instruction ins)
 {
-  size_t i;
-
-  /* XXX: Capstone does not provide information for all generic groups
-   * for arm instructions, unlike x86, so we have to do it manually.
-   * Once this is implemented, it will suffice to check for the following groups:
-   * CS_GRP_JUMP, CS_GRP_CALL, CS_GRP_RET, CS_GRP_IRET */
-
-  if(is_cs_unconditional_jmp_ins(ins) ||
-     is_cs_conditional_cflow_ins(ins) ||
-     is_cs_call_ins(ins) ||
-     is_cs_ret_ins(ins)) {
-    return 1;
-  }
-
-  return 0;
+            return (ins.InstructionClass &(InstrClass.Transfer|InstrClass.Return))
+                == InstrClass.Transfer
+                && ins.Operands.Length > 0
+                && (ins.Operands[^1] is not AddressOperand)
+                && (ins.Operands[^1] is not ImmediateOperand);
 }
 
 
-static int
-is_cs_indirect_ins(cs_insn *ins)
+static bool
+is_cs_privileged_ins(A32Instruction ins)
 {
-  /* mov pc, rN */
-  if(ins->id == ARM_INS_MOV
-     && ins->detail->arm.operands[0].type == ARM_OP_REG
-     && ins->detail->arm.operands[0].reg == ARM_REG_PC
-     && ins->detail->arm.operands[1].type == ARM_OP_REG
-     && ins->detail->arm.operands[1].reg != ARM_REG_LR) {
-    return 1;
-  }
-
-  /* ldrls pc, {...} */
-  if(ins->id == ARM_INS_LDR
-     && ins->detail->arm.operands[0].type == ARM_OP_REG
-     && ins->detail->arm.operands[0].reg == ARM_REG_PC) {
-    return 1;
-  }
-
-  switch(ins->id) {
-  case ARM_INS_BX:
-  case ARM_INS_BLX:
-  case ARM_INS_BXJ:
-    if(ins->detail->arm.operands[0].type == ARM_OP_REG &&
-       ins->detail->arm.operands[0].reg == ARM_REG_PC) {
-      return 1;
-    }
-    return 0;
-  default:
-    return 0;
-  }
-}
-
-
-static int
-is_cs_privileged_ins(cs_insn *ins)
-{
-  switch(ins->id) {
+  switch(ins.Mnemonic) {
   /* XXX: todo */
   default:
-    return 0;
+    return false;
   }
 }
 
 
-static uint8_t
-cs_to_nucleus_op_type(arm_op_type op)
+
+public static int
+nucleus_disasm_bb_arm(Binary bin, DisasmSection dis, BB bb)
 {
-  switch(op) {
-  case ARM_OP_REG:
-    return Operand::OP_TYPE_REG;
-  case ARM_OP_IMM:
-    return Operand::OP_TYPE_IMM;
-  case ARM_OP_MEM:
-    return Operand::OP_TYPE_MEM;
-  case ARM_OP_FP:
-    return Operand::OP_TYPE_FP;
-  case ARM_OP_INVALID:
-  default:
-    return Operand::OP_TYPE_NONE;
-  }
-}
+            bool init, ret, jmp, indir, cflow, cond, call, nop, only_nop, priv, trap;
+            int ndisassembled;
+  ulong pc_addr, offset;
+  int i, j;
 
+  init   = false;
 
-int
-nucleus_disasm_bb_arm(Binary *bin, DisasmSection *dis, BB *bb)
-{
-  int init, ret, jmp, indir, cflow, cond, call, nop, only_nop, priv, trap, ndisassembled;
-  csh cs_dis;
-  cs_mode cs_mode_flags;
-  cs_insn *cs_ins;
-  cs_arm_op *cs_op;
-  const uint8_t *pc;
-  uint64_t pc_addr, offset;
-  size_t i, j, n;
-  Instruction *ins;
-  Operand *op;
-
-  init   = 0;
-  cs_ins = NULL;
-
-  switch(bin->bits) {
+  switch(bin.bits) {
   case 32:
-    cs_mode_flags = (cs_mode)(CS_MODE_ARM);
     break;
   default:
-    print_err("unsupported bit width %u for architecture %s", bin->bits, bin->arch_str.c_str());
+    Log.print_err("unsupported bit width {0} for architecture {1}.", bin.bits, bin.arch_str);
     goto fail;
   }
 
-  if(cs_open(CS_ARCH_ARM, cs_mode_flags, &cs_dis) != CS_ERR_OK) {
-    print_err("failed to initialize libcapstone");
-    goto fail;
-  }
-  init = 1;
-  cs_option(cs_dis, CS_OPT_DETAIL, CS_OPT_ON);
+            var arch = new Reko.Arch.Arm.Arm32Architecture(null, "arm32", new Dictionary<string, object>());
+            init = true;
 
-  cs_ins = cs_malloc(cs_dis);
-  if(!cs_ins) {
-    print_err("out of memory");
-    goto fail;
+  offset = bb.start - dis.section.vma;
+  if((bb.start < dis.section.vma) || (offset >= dis.section.size)) {
+    Log.print_err("basic block address points outside of section '{0}'.", dis.section.name);
+                return -1; ;
   }
 
-  offset = bb->start - dis->section->vma;
-  if((bb->start < dis->section->vma) || (offset >= dis->section->size)) {
-    print_err("basic block address points outside of section '%s'", dis->section->name.c_str());
-    goto fail;
-  }
-
-  pc = dis->section->bytes + offset;
-  n = dis->section->size - offset;
-  pc_addr = bb->start;
-  bb->end = bb->start;
-  bb->section = dis->section;
+            if (!arch.TryParseAddress(dis.section.vma.ToString("X"), out var addrSection))
+            {
+                Log.print_err("Lolwut: {0:X}", dis.section.vma);
+            }
+            var mem = arch.CreateMemoryArea(addrSection, dis.section.bytes);
+            var pc = arch.CreateImageReader(mem, (long)offset);
+            ulong n = dis.section.size - offset;
+  pc_addr = bb.start;
+  bb.end = bb.start;
+  bb.section = dis.section;
   ndisassembled = 0;
-  only_nop = 0;
-  while(cs_disasm_iter(cs_dis, &pc, &n, &pc_addr, cs_ins)) {
-    if(cs_ins->id == ARM_INS_INVALID) {
-      bb->invalid = 1;
-      bb->end += 1;
+  only_nop = false;
+  foreach (A32Instruction cs_ins in arch.CreateDisassembler(pc)) {
+    if(cs_ins.Mnemonic == Mnemonic.it) {
+      bb.invalid = true;
+      bb.end += 1;
       break;
     }
-    if(!cs_ins->size) {
+    if(cs_ins.Length == 0) {
       break;
     }
 
@@ -277,94 +171,86 @@ nucleus_disasm_bb_arm(Binary *bin, DisasmSection *dis, BB *bb)
     priv  = is_cs_privileged_ins(cs_ins);
     indir = is_cs_indirect_ins(cs_ins);
 
-    if(!ndisassembled && nop) only_nop = 1; /* group nop instructions together */
+    if(ndisassembled == 0 && nop) only_nop = true; /* group nop instructions together */
     if(!only_nop && nop) break;
     if(only_nop && !nop) break;
 
     ndisassembled++;
 
-    bb->end += cs_ins->size;
-    bb->insns.push_back(Instruction());
+    bb.end += (ulong) cs_ins.Length;
+    bb.insns.Add(cs_ins);
     if(priv) {
-      bb->privileged = true;
+      bb.privileged = true;
     }
     if(nop) {
-      bb->padding = true;
+      bb.padding = true;
     }
     if(trap) {
-      bb->trap = true;
+      bb.trap = true;
     }
 
-    ins = &bb->insns.back();
-    ins->id         = cs_ins->id;
-    ins->start      = cs_ins->address;
-    ins->size       = cs_ins->size;
-    ins->mnem       = std::string(cs_ins->mnemonic);
-    ins->op_str     = std::string(cs_ins->op_str);
-    ins->privileged = priv;
-    ins->trap       = trap;
-    if(nop)   ins->flags |= Instruction::INS_FLAG_NOP;
-    if(ret)   ins->flags |= Instruction::INS_FLAG_RET;
-    if(jmp)   ins->flags |= Instruction::INS_FLAG_JMP;
-    if(cond)  ins->flags |= Instruction::INS_FLAG_COND;
-    if(cflow) ins->flags |= Instruction::INS_FLAG_CFLOW;
-    if(call)  ins->flags |= Instruction::INS_FLAG_CALL;
-    if(indir) ins->flags |= Instruction::INS_FLAG_INDIRECT;
+    /*
 
-    for(i = 0; i < cs_ins->detail->arm.op_count; i++) {
-      cs_op = &cs_ins->detail->arm.operands[i];
-      ins->operands.push_back(Operand());
-      op = &ins->operands.back();
-      op->type = cs_to_nucleus_op_type(cs_op->type);
-      if(op->type == Operand::OP_TYPE_IMM) {
-        op->arm_value.imm = cs_op->imm;
-      } else if(op->type == Operand::OP_TYPE_REG) {
-        op->arm_value.reg = (arm_reg)cs_op->reg;
-      } else if(op->type == Operand::OP_TYPE_FP) {
-        op->arm_value.fp = cs_op->fp;
-      } else if(op->type == Operand::OP_TYPE_MEM) {
-        op->arm_value.mem.base    = cs_op->mem.base;
-        op->arm_value.mem.index   = cs_op->mem.index;
-        op->arm_value.mem.scale   = cs_op->mem.scale;
-        op->arm_value.mem.disp    = cs_op->mem.disp;
-        if(cflow) ins->flags |= Instruction::INS_FLAG_INDIRECT;
+    ins = &bb.insns.back();
+    ins.id         = cs_ins.id;
+    ins.start      = cs_ins.address;
+    ins.size       = cs_ins.size;
+    ins.mnem       = std::string(cs_ins.mnemonic);
+    ins.op_str     = std::string(cs_ins.op_str);
+    ins.privileged = priv;
+    ins.trap       = trap;
+    if(nop)   ins.flags |= Instruction::INS_FLAG_NOP;
+    if(ret)   ins.flags |= Instruction::INS_FLAG_RET;
+    if(jmp)   ins.flags |= Instruction::INS_FLAG_JMP;
+    if(cond)  ins.flags |= Instruction::INS_FLAG_COND;
+    if(cflow) ins.flags |= Instruction::INS_FLAG_CFLOW;
+    if(call)  ins.flags |= Instruction::INS_FLAG_CALL;
+    if(indir) ins.flags |= Instruction::INS_FLAG_INDIRECT;
+
+    for(i = 0; i < cs_ins.detail.arm.op_count; i++) {
+      cs_op = &cs_ins.detail.arm.operands[i];
+      ins.operands.push_back(Operand());
+      op = &ins.operands.back();
+      op.type = cs_to_nucleus_op_type(cs_op.type);
+      if(op.type == Operand::OP_TYPE_IMM) {
+        op.arm_value.imm = cs_op.imm;
+      } else if(op.type == Operand::OP_TYPE_REG) {
+        op.arm_value.reg = (arm_reg)cs_op.reg;
+      } else if(op.type == Operand::OP_TYPE_FP) {
+        op.arm_value.fp = cs_op.fp;
+      } else if(op.type == Operand::OP_TYPE_MEM) {
+        op.arm_value.mem.base    = cs_op.mem.base;
+        op.arm_value.mem.index   = cs_op.mem.index;
+        op.arm_value.mem.scale   = cs_op.mem.scale;
+        op.arm_value.mem.disp    = cs_op.mem.disp;
+        if(cflow) ins.flags |= Instruction::INS_FLAG_INDIRECT;
       }
     }
 
     if(cflow) {
-      for(j = 0; j < cs_ins->detail->arm.op_count; j++) {
-        cs_op = &cs_ins->detail->arm.operands[j];
-        if(cs_op->type == ARM_OP_IMM) {
-          ins->target = cs_op->imm;
+      for(j = 0; j < cs_ins.detail.arm.op_count; j++) {
+        cs_op = &cs_ins.detail.arm.operands[j];
+        if(cs_op.type == ARM_OP_IMM) {
+          ins.target = cs_op.imm;
         }
       }
     }
-
+    */
     if(cflow) {
       /* end of basic block */
       break;
     }
   }
 
-  if(!ndisassembled) {
-    bb->invalid = 1;
-    bb->end += 1; /* ensure forward progress */
+  if(ndisassembled == 0) {
+    bb.invalid = true;
+    bb.end += (uint)(arch.InstructionBitSize / arch.MemoryGranularity); /* ensure forward progress */
   }
 
-  ret = ndisassembled;
-  goto cleanup;
+  return ndisassembled;
 
   fail:
-  ret = -1;
+  return -1;
 
-  cleanup:
-  if(cs_ins) {
-    cs_free(cs_ins, 1);
-  }
-  if(init) {
-    cs_close(&cs_dis);
-  }
-  return ret;
-}
-#endif
+}}
 }
