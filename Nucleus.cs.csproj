@@ -10,8 +10,11 @@
     <LangVersion>9.0</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="UnitTests\**" />
+    <EmbeddedResource Remove="UnitTests\**" />
     <None Remove="*.cc" />
     <None Remove="*.h" />
+    <None Remove="UnitTests\**" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Reko.Decompiler.Runtime" Version="0.9.4" />
