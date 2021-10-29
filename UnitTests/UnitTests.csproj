@@ -12,7 +12,7 @@
     <PackageReference Include="NUnit" Version="3.13.1" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.17.0" />
     <PackageReference Include="coverlet.collector" Version="3.0.2" />
-    <PackageReference Include="Reko.Decompiler.Runtime" Version="0.9.4" />
+    <PackageReference Include="Reko.Decompiler.Runtime" Version="0.10.1" />
   </ItemGroup>
 
   <ItemGroup>

@@ -118,8 +118,8 @@ namespace Nucleus
         #region BFD
         public class bfd
         {
-            internal static object error_no_error;
-            internal static object target_unknown_flavour;
+            public static object error_no_error;
+            public static object target_unknown_flavour;
 
             internal static void init()
             {
@@ -502,22 +502,28 @@ namespace Nucleus
             return 0;
         }
 
+        private const bool generate_spans_of_x86_nops = false;
+
         private static byte[] generate_random_data(int size)
         {
             var mem = new byte[size];
             var rnd = new Random(42);
-            rnd.NextBytes(mem);
-            return mem;
-            for (int i = 0; i < 10; ++i)
+            if (generate_spans_of_x86_nops)
             {
-                int c = rnd.Next() % 4;
-                int p = rnd.Next() % mem.Length;
-                for (int j = 0; j < c; ++j)
+                for (int i = 0; i < 10; ++i)
                 {
-                    mem[(p + j) % mem.Length] = 0x90;
+                    int c = rnd.Next() % 4;
+                    int p = rnd.Next() % mem.Length;
+                    for (int j = 0; j < c; ++j)
+                    {
+                        mem[(p + j) % mem.Length] = 0x90;
+                    }
                 }
             }
-
+            else
+            {
+                rnd.NextBytes(mem);
+            }
             return mem;
         }
 

@@ -28,32 +28,32 @@ namespace Nucleus
 
         public class csh
         {
-            internal static void cs_option(csh cs_dis, object cS_OPT_DETAIL, object cS_OPT_ON)
+            public static void cs_option(csh cs_dis, object cS_OPT_DETAIL, object cS_OPT_ON)
             {
                 throw new NotImplementedException();
             }
 
-            internal static int cs_open(int cS_ARCH_X86, cs_mode cs_mode, out csh cs_dis)
+            public static int cs_open(int cS_ARCH_X86, cs_mode cs_mode, out csh cs_dis)
             {
                 throw new NotImplementedException();
             }
 
-            internal static cs_insn cs_malloc(csh cs_dis)
+            public static cs_insn cs_malloc(csh cs_dis)
             {
                 throw new NotImplementedException();
             }
 
-            internal bool cs_disasm_iter(ref ulong pc, ref ulong n, ref ulong pc_addr, cs_insn cs_ins)
+            public bool cs_disasm_iter(ref ulong pc, ref ulong n, ref ulong pc_addr, cs_insn cs_ins)
             {
                 throw new NotImplementedException();
             }
 
-            internal static void cs_free(cs_insn cs_ins, int v)
+            public static void cs_free(cs_insn cs_ins, int v)
             {
                 throw new NotImplementedException();
             }
 
-            internal void cs_close()
+            public void cs_close()
             {
                 throw new NotImplementedException();
             }
@@ -61,32 +61,33 @@ namespace Nucleus
 
         public class cs_insn
         {
-            internal ulong address;
+            public ulong address;
             public x86_insn id;
             public byte size;
-            internal string mnemonic;
+            public string mnemonic;
             public cs_detail detail;
-            internal string op_str;
+            public string op_str;
         }
 
         public class cs_detail
         {
             public cs_x86 x86;
-            internal uint groups_count;
+            public uint groups_count;
             public byte[] groups;
         }
+
         public class cs_x86
         {
             public cs_x86_op[] operands;
-            internal byte addr_size;
-            internal int op_count;
+            public byte addr_size;
+            public int op_count;
         }
 
         public class cs_x86_op
         {
-            internal x86_op_type type;
+            public x86_op_type type;
             public X86Value val;
-            internal byte size;
+            public byte size;
 
             public x86_reg reg { get { return ((X86Reg)val).reg; } }
             public long imm { get { return ((X86Imm)val).imm; } }

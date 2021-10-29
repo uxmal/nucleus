@@ -12,7 +12,6 @@ namespace Nucleus
 
         static void print_usage(string prog)
         {
-            int i;
             //extern const char *strategy_functions_doc[];
             //extern const char *binary_types_descr[][2];
             //extern const char *binary_arch_descr[][2];
@@ -83,7 +82,6 @@ namespace Nucleus
 
           options.strategy.function = null;
 
-          bool opterr = false;
           var go = new GetOpt(argv, optstr);
           while((opt = go.getopt(out var optarg)) != -1) {
             switch(opt) {
@@ -181,7 +179,7 @@ namespace Nucleus
           }
 
           if(string.IsNullOrEmpty(options.strategy.name)) {
-            Console.Write("ERROR: No strategy function specified\n");
+            Console.WriteLine("ERROR: No strategy function specified");
             print_usage(argv[0]);
             return -1;
           } else if(load_bb_strategy_functions() < 0) {

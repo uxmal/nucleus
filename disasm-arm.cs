@@ -13,8 +13,7 @@ namespace Nucleus
 }
 
 
-static bool
-is_cs_trap_ins(A32Instruction ins)
+static bool is_cs_trap_ins(A32Instruction ins)
 {
   switch(ins.Mnemonic) {
   /* XXX: todo */
@@ -24,16 +23,14 @@ is_cs_trap_ins(A32Instruction ins)
 }
 
 
-static bool
-is_cs_call_ins(A32Instruction ins)
+static bool  is_cs_call_ins(A32Instruction ins)
 {
 
             return (ins.InstructionClass & (InstrClass.Transfer | InstrClass.Call)) == InstrClass.Call;
 }
 
 
-static bool
-is_cs_ret_ins(A32Instruction ins)
+static bool is_cs_ret_ins(A32Instruction ins)
 {
             return ins.InstructionClass.HasFlag(InstrClass.Return);
             /*
@@ -68,11 +65,10 @@ is_cs_ret_ins(A32Instruction ins)
 }
 
 
-static bool
-is_cs_unconditional_jmp_ins(A32Instruction ins)
+static bool is_cs_unconditional_jmp_ins(A32Instruction ins)
 {
-            return (ins.InstructionClass & InstrClass.ConditionalTransfer | InstrClass.Call) ==
-                InstrClass.Transfer;
+    return (ins.InstructionClass & InstrClass.ConditionalTransfer | InstrClass.Call) ==
+        InstrClass.Transfer;
 }
 
 
@@ -83,10 +79,9 @@ is_cs_unconditional_jmp_ins(A32Instruction ins)
         }
 
 
-static bool
-is_cs_cflow_ins(A32Instruction ins)
+static bool is_cs_cflow_ins(A32Instruction ins)
 {
-            return ins.InstructionClass.HasFlag(InstrClass.Transfer);
+    return ins.InstructionClass.HasFlag(InstrClass.Transfer);
 }
 
 
@@ -100,8 +95,7 @@ static bool is_cs_indirect_ins(A32Instruction ins)
 }
 
 
-static bool
-is_cs_privileged_ins(A32Instruction ins)
+static bool is_cs_privileged_ins(A32Instruction ins)
 {
   switch(ins.Mnemonic) {
   /* XXX: todo */
@@ -112,54 +106,50 @@ is_cs_privileged_ins(A32Instruction ins)
 
 
 
-public static int
-nucleus_disasm_bb_arm(Binary bin, DisasmSection dis, BB bb)
+public static int nucleus_disasm_bb_arm(Binary bin, DisasmSection dis, BB bb)
 {
-            bool init, ret, jmp, indir, cflow, cond, call, nop, only_nop, priv, trap;
+            bool ret, jmp, indir, cflow, cond, call, nop, only_nop, priv, trap;
             int ndisassembled;
-  ulong pc_addr, offset;
-  int i, j;
+    ulong pc_addr, offset;
 
-  init   = false;
 
-  switch(bin.bits) {
-  case 32:
-    break;
-  default:
-    Log.print_err("unsupported bit width {0} for architecture {1}.", bin.bits, bin.arch_str);
-    goto fail;
-  }
-
-            var arch = new Reko.Arch.Arm.Arm32Architecture(null, "arm32", new Dictionary<string, object>());
-            init = true;
-
-  offset = bb.start - dis.section.vma;
-  if((bb.start < dis.section.vma) || (offset >= dis.section.size)) {
-    Log.print_err("basic block address points outside of section '{0}'.", dis.section.name);
-                return -1; ;
-  }
-
-            if (!arch.TryParseAddress(dis.section.vma.ToString("X"), out var addrSection))
-            {
-                Log.print_err("Lolwut: {0:X}", dis.section.vma);
-            }
-            var mem = arch.CreateMemoryArea(addrSection, dis.section.bytes);
-            var pc = arch.CreateImageReader(mem, (long)offset);
-            ulong n = dis.section.size - offset;
-  pc_addr = bb.start;
-  bb.end = bb.start;
-  bb.section = dis.section;
-  ndisassembled = 0;
-  only_nop = false;
-  foreach (A32Instruction cs_ins in arch.CreateDisassembler(pc)) {
-    if(cs_ins.Mnemonic == Mnemonic.it) {
-      bb.invalid = true;
-      bb.end += 1;
-      break;
+    switch(bin.bits) {
+    case 32:
+        break;
+    default:
+        Log.print_err("unsupported bit width {0} for architecture {1}.", bin.bits, bin.arch_str);
+        goto fail;
     }
-    if(cs_ins.Length == 0) {
-      break;
+
+    var arch = new Reko.Arch.Arm.Arm32Architecture(null, "arm32", new Dictionary<string, object>());
+
+    offset = bb.start - dis.section.vma;
+    if ((bb.start < dis.section.vma) || (offset >= dis.section.size)) {
+        Log.print_err("basic block address points outside of section '{0}'.", dis.section.name);
+        return -1; ;
     }
+
+    if (!arch.TryParseAddress(dis.section.vma.ToString("X"), out var addrSection))
+    {
+        Log.print_err("Lolwut: {0:X}", dis.section.vma);
+    }
+    var mem = arch.CreateMemoryArea(addrSection, dis.section.bytes);
+    var pc = arch.CreateImageReader(mem, (long)offset);
+    ulong n = dis.section.size - offset;
+    pc_addr = bb.start;
+    bb.end = bb.start;
+    bb.section = dis.section;
+    ndisassembled = 0;
+    only_nop = false;
+    foreach (A32Instruction cs_ins in arch.CreateDisassembler(pc)) {
+        if(cs_ins.Mnemonic == Mnemonic.it) {
+            bb.invalid = true;
+            bb.end += 1;
+            break;
+        }
+        if(cs_ins.Length == 0) {
+            break;
+        }
 
     trap  = is_cs_trap_ins(cs_ins);
     nop   = is_cs_nop_ins(cs_ins);

@@ -18,8 +18,6 @@ namespace Nucleus
         public Edge(Edge.EdgeType type_, BB src_, BB dst_, bool is_switch_, ulong jmptab_, int offset_) {
             type = type_; src = src_; dst = dst_; is_switch = is_switch_; jmptab = jmptab_; offset = offset_; }
 
-        //string type2str ();
-
         public EdgeType type;
         public BB src;
         public BB dst;

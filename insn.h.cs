@@ -55,24 +55,23 @@ namespace Nucleus
 
     public class X86Reg : X86Value
     {
-        public x86_reg reg;
+        public new x86_reg reg { get { return base.reg; } set { base.reg = value; } }
     }
 
     public class X86Imm : X86Value
     {
-        public long imm;
+        public new long imm { get { return base.imm; } set { base.imm = value; } }
     }
 
     public class X87FP : X86Value
     {
-        public double fp;
     }
 
     public class X86OpMem : X86Value
     {
-        internal x86_reg segment;
-        internal x86_reg @base;
-        internal x86_reg index;
+        public x86_reg segment;
+        public x86_reg @base;
+        public x86_reg index;
         public int disp;
         public byte scale;
     }

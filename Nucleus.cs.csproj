@@ -8,6 +8,7 @@
     <TargetFramework>net5.0</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <LangVersion>9.0</LangVersion>
+    <NoWarn>1701;1702;IDE1006</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="UnitTests\**" />
@@ -17,6 +18,6 @@
     <None Remove="UnitTests\**" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Reko.Decompiler.Runtime" Version="0.9.4" />
+    <PackageReference Include="Reko.Decompiler.Runtime" Version="0.10.1" />
   </ItemGroup>
 </Project>

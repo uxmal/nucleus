@@ -1179,12 +1179,11 @@ void expand_function(Function f, BB bb)
                 }
             }
             if (call_fallthrough && (noplen > 1)) continue;
-                    bb.padding = false;
-                    link_bbs(Edge.EdgeType.EDGE_TYPE_FALLTHROUGH, bb, bb.end);
-                }
-            }
+            bb.padding = false;
+            link_bbs(Edge.EdgeType.EDGE_TYPE_FALLTHROUGH, bb, bb.end);
         }
-
+    }
+}
 
         void detect_bad_bbs()
         {
@@ -1202,14 +1201,15 @@ void expand_function(Function f, BB bb)
                     (cc, _) = get_bb(cc.start - 1);
                     if (cc == null)
                         break;
-                    var flags = cc.insns[^1].flags();
+                    var lastInstr = cc.insns[^1];
+                    var flags = lastInstr.flags();
                     if ((flags & InstructionFlags.INS_FLAG_CFLOW) != 0 && (InstructionFlags.INS_FLAG_INDIRECT) != 0)
                     {
                         invalid = false;
                     }
                     else if ((flags & InstructionFlags.INS_FLAG_CALL) != 0 || (flags & InstructionFlags.INS_FLAG_JMP) != 0)
                     {
-                        invalid = get_bb(cc.insns[^1].target()).bb == null;
+                        invalid = get_bb(lastInstr.target()).bb == null;
                     }
                     else if ((flags & InstructionFlags.INS_FLAG_RET) != 0)
                     {
