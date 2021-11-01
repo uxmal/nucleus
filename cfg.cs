@@ -99,7 +99,7 @@ void analyze_addrtaken_ppc()
 void 
 analyze_addrtaken_x86()
 {
-            foreach (var kv in this.start2bb) {
+  foreach (var kv in this.start2bb) {
     var bb = kv.Value;
     foreach (var ins in bb.insns) {
       if(ins.Operands.Length < 2) {

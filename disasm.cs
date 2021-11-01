@@ -83,7 +83,9 @@ namespace Nucleus
             }
             else
             {
-                return addrmap[addr];
+                return addrmap.TryGetValue(addr, out var result)
+                    ? result
+                    : DisasmRegion.UNMAPPED;
             }
         }
 

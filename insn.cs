@@ -39,7 +39,7 @@ namespace Nucleus
         public static Edge.EdgeType edge_type(this MachineInstruction self)
         {
             var last_op = self.Operands[^1];
-            switch (self.InstructionClass & InstrClass.Transfer | InstrClass.Call | InstrClass.Return) {
+            switch (self.InstructionClass & (InstrClass.Transfer | InstrClass.Call | InstrClass.Return)) {
             case InstrClass.Transfer:
                 return last_op is ImmediateOperand ||
                        last_op is AddressOperand
