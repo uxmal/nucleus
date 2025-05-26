@@ -1,6 +1,7 @@
 
 using Reko.Arch.PowerPC;
 using Reko.Core;
+using Reko.Core.Expressions;
 using Reko.Core.Machine;
 using Reko.Core.Memory;
 using System.Diagnostics;
@@ -19,12 +20,12 @@ is_cs_nop_ins(PowerPcInstruction ppc)
   case Mnemonic.ori:
     /* ori r0,r0,r0 */
     if((ppc.Operands.Length == 3)
-       && (ppc.Operands[0] is RegisterOperand r0)
-       && (ppc.Operands[1] is RegisterOperand r1)
-       && (ppc.Operands[2] is RegisterOperand r2)
-       && (r0.Register.Number == 0)
-       && (r1.Register.Number == 0)
-       && (r2.Register.Number == 0)) {
+       && (ppc.Operands[0] is RegisterStorage r0)
+       && (ppc.Operands[1] is RegisterStorage r1)
+       && (ppc.Operands[2] is Constant r2)
+       && (r0.Number == 0)
+       && (r1.Number == 0)
+       && (r2.IsZero)) {
       return true;
     }
     return false;
@@ -97,10 +98,10 @@ is_cs_ret_ins(PowerPcInstruction ppc)
     return true;
   //case Mnemonic.bclr:
   //  Debug.Assert(ppc.Operands.Length  >= 2);
-  //  Debug.Assert(ppc.Operands[0] is ImmediateOperand);
-  //  Debug.Assert(ppc.Operands[1] is ImmediateOperand);
-  //  bo = ((ImmediateOperand)ppc.Operands[0]).Value.ToInt32();
-  //  bi = ((ImmediateOperand)ppc.Operands[1]).Value.ToInt32();
+  //  Debug.Assert(ppc.Operands[0] is Constant);
+  //  Debug.Assert(ppc.Operands[1] is Constant);
+  //  bo = ((Constant)ppc.Operands[0]).Value.ToInt32();
+  //  bi = ((Constant)ppc.Operands[1]).Value.ToInt32();
   //  if (bo == 20 && bi == 0) {
   //    return true;
   //  }
@@ -121,10 +122,10 @@ is_cs_unconditional_jmp_ins(PowerPcInstruction ppc)
     return true;
   case Mnemonic.bcctr:
     Debug.Assert(ppc.Operands.Length >= 2);
-    Debug.Assert(ppc.Operands[0] is ImmediateOperand);
-    Debug.Assert(ppc.Operands[1] is ImmediateOperand);
-    bo = ((ImmediateOperand)ppc.Operands[0]).Value.ToInt32();
-    bi = ((ImmediateOperand)ppc.Operands[1]).Value.ToInt32();
+    Debug.Assert(ppc.Operands[0] is Constant);
+    Debug.Assert(ppc.Operands[1] is Constant);
+    bo = ((Constant)ppc.Operands[0]).ToInt32();
+    bi = ((Constant)ppc.Operands[1]).ToInt32();
     if (bo == 20 && bi == 0) {
       return true;
     }

@@ -1,6 +1,7 @@
 using Reko.Arch.Arm;
 using Reko.Arch.Arm.AArch64;
 using Reko.Core;
+using Reko.Core.Expressions;
 using Reko.Core.Machine;
 using Reko.Core.Memory;
 using System;
@@ -11,7 +12,7 @@ namespace Nucleus
     using static capstone;
 
     public partial class AArch64 {
-#if NYI
+
         public static bool is_cs_nop_ins(AArch64Instruction ins)
 {
   switch(ins.Mnemonic) {
@@ -76,10 +77,10 @@ is_cs_ret_ins(AArch64Instruction ins)
 {
   /* ret */
   if(ins.Mnemonic == Mnemonic.ret) {
-    return 1;
+    return true;
   }
 
-  return 0;
+  return false;
 }
 
 
@@ -88,7 +89,7 @@ is_cs_unconditional_jmp_ins(AArch64Instruction ins)
 {
   switch(ins.Mnemonic) {
   case Mnemonic.b:
-    if(ins.Operands[0] is ConditionOperand cc && 
+    if(ins.Operands[0] is ConditionOperand<ArmCondition> cc && 
        cc.Condition != ArmCondition.AL) {
       return false;
     }
@@ -106,7 +107,7 @@ is_cs_conditional_cflow_ins(AArch64Instruction ins)
 {
   switch(ins.Mnemonic) {
   case Mnemonic.b:
-    return ins.Operands[0] is ConditionOperand cc &&
+    return ins.Operands[0] is ConditionOperand<ArmCondition> cc &&
                     cc.Condition != ArmCondition.AL;
   case Mnemonic.cbnz:
   case Mnemonic.cbz:
@@ -122,12 +123,7 @@ is_cs_conditional_cflow_ins(AArch64Instruction ins)
 static bool
 is_cs_privileged_ins(AArch64Instruction ins)
 {
-  return ins.InstructionClass.HasFlag(InstrClass.System);
-  switch(ins.Mnemonic) {
-  /* XXX: todo */
-  default:
-    return 0;
-  }
+  return ins.InstructionClass.HasFlag(InstrClass.Privileged);
 }
 
 
@@ -148,41 +144,33 @@ static Operand.OperandType
 cs_to_nucleus_op_type(MachineOperand op)
 {
   switch(op) {
-  case RegisterOperand _:
-    return Operand.OperandType.OP_TYPE_REG;
-  case ImmediateOperand _:
-  case AddressOperand _:
+  case RegisterStorage r:
+    if (Registers.SimdRegs128[0].Domain <= r.Domain &&
+        Registers.SimdRegs128[^1].Domain >= r.Domain)
+        return Operand.OperandType.OP_TYPE_FP;
+    else
+        return Operand.OperandType.OP_TYPE_REG;
+  case Constant _:
+  case Address _:
     return Operand.OperandType.OP_TYPE_IMM;
   case MemoryOperand _:
     return Operand.OperandType.OP_TYPE_MEM;
-  case ARM64_OP_FP:
-    return Operand.OperandType.OP_TYPE_FP;
   default:
     return Operand.OperandType.OP_TYPE_NONE;
   }
 }
 
-#endif
-
 public static bool
 nucleus_disasm_bb_aarch64(Binary bin, DisasmSection dis, BB bb)
 {
-            return false;
-#if NYI
-            bool init, ret, jmp, indir, cflow, cond, call, nop, only_nop, priv, trap;
+            bool ret, jmp, indir, cflow, cond, call, nop, only_nop, priv, trap;
   int ndisassembled;
   IEnumerator<AArch64Instruction> cs_dis;
-  cs_mode cs_mode_flags;
   AArch64Instruction cs_ins;
-  MachineOperand cs_op;
   EndianImageReader pc;
   ulong pc_addr, offset;
-  int i, j;
   ulong n;
-  Instruction ins;
-  Operand op;
 
-  init   = false;
   cs_ins = null;
 
   switch(bin.bits) {
@@ -236,8 +224,7 @@ nucleus_disasm_bb_aarch64(Binary bin, DisasmSection dis, BB bb)
     ndisassembled++;
 
     bb.end += (uint)cs_ins.Length;
-    ins = new Instruction();
-    bb.insns.Add(ins);
+    bb.insns.Add(cs_ins);
     if(priv) {
       bb.privileged = true;
     }
@@ -246,46 +233,6 @@ nucleus_disasm_bb_aarch64(Binary bin, DisasmSection dis, BB bb)
     }
     if(trap) {
       bb.trap = true;
-    }
-
-    ins.id         = (uint)cs_ins.Mnemonic;
-    ins.start      = cs_ins.Address.ToLinear();
-    ins.size       = (byte)cs_ins.Length;
-    ins.mnem       = cs_ins.MnemonicAsString;
-    ins.op_str     = op_str(cs_ins);
-    ins.privileged = priv;
-    ins.trap       = trap;
-    if(nop)   ins.flags |= InstructionFlags.INS_FLAG_NOP;
-    if(ret)   ins.flags |= InstructionFlags.INS_FLAG_RET;
-    if(jmp)   ins.flags |= InstructionFlags.INS_FLAG_JMP;
-    if(cond)  ins.flags |= InstructionFlags.INS_FLAG_COND;
-    if(cflow) ins.flags |= InstructionFlags.INS_FLAG_CFLOW;
-    if(call)  ins.flags |= InstructionFlags.INS_FLAG_CALL;
-    if(indir) ins.flags |= InstructionFlags.INS_FLAG_INDIRECT;
-
-    for(i = 0; i < cs_ins.Operands.Length; i++) {
-      cs_op = cs_ins.Operands[i];
-      op = new Operand();
-      ins.operands.Add(op);
-      op.type = cs_to_nucleus_op_type(cs_op);
-      if(op.type == Operand.OperandType.OP_TYPE_IMM) {
-        op.aarch64_value.imm = cs_op.imm;
-      } else if(op.type == Operand.OperandType.OP_TYPE_REG) {
-        op.aarch64_value.reg = (arm64_reg)cs_op.reg;
-      } else if(op.type == Operand.OperandType.OP_TYPE_FP) {
-        op.aarch64_value.fp = cs_op.fp;
-      } else if(op.type == Operand.OperandType.OP_TYPE_MEM) {
-        op.x86_value.aarch64_value.mem.@base    = cs_op.mem.@base;
-        op.aarch64_value.mem.index   = cs_op.mem.index;
-        op.aarch64_value.mem.disp    = cs_op.mem.disp;
-        if(cflow) ins.flags |= InstructionFlags.INS_FLAG_INDIRECT;
-      }
-    }
-
-    if(cflow) {
-      if (cs_ins.Operands[^1] is AddressOperand addr) {
-          ins.target = addr.Address.ToLinear();
-      }
     }
 
     if(cflow) {
@@ -307,12 +254,8 @@ nucleus_disasm_bb_aarch64(Binary bin, DisasmSection dis, BB bb)
 
   cleanup:
   return ret;
-#endif
 }
 
-        private static string op_str(AArch64Instruction cs_ins)
-        {
-            throw new NotImplementedException();
-        }
+
     }
 }

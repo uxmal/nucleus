@@ -10,7 +10,7 @@ namespace Nucleus
 
         public CFG cfg;
         public ulong id;
-        public ulong start;
+        public ulong start { get; set; }
         public ulong end;
         public List<BB> entry = new List<BB>();
         public List<BB> BBs = new List<BB>();
@@ -34,7 +34,7 @@ namespace Nucleus
                     offset = 0;
                     foreach (var e in entry_bb.ancestors)
                     {
-                        if (e.type == Edge.EdgeType.EDGE_TYPE_CALL) offset =(uint) e.offset;
+                        if (e.type == Edge.EdgeType.EDGE_TYPE_CALL) offset = (uint) e.offset;
                     }
                     if (i == 0)
                     {
@@ -65,7 +65,7 @@ namespace Nucleus
 
             if (entry.Count == 0)
             {
-                @out.WriteLine("0x{0:X16}\t{1}", 0, end - start);
+                @out.WriteLine("0x{0:X16}\t{1,5}", 0, end - start);
             }
             else
             {
@@ -101,7 +101,7 @@ namespace Nucleus
             }
 
             called.Sort((a, b) => a.start.CompareTo(b.start));
-            foreach (var bb in called) this.entry.Add(bb);
+            this.entry.AddRange(called);
 
             foreach (var bb in this.BBs)
             {

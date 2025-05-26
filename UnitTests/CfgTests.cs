@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+using NUnit.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,7 +40,7 @@ namespace Nucleus.UnitTests
                 m.ret();
             });
 
-            Assert.AreEqual(1, cfg.functions.Count);
+            Assert.That(cfg.functions.Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -53,7 +54,7 @@ namespace Nucleus.UnitTests
                 m.ret();
             });
 
-            Assert.AreEqual(2, cfg.functions.Count);
+            Assert.That(cfg.functions.Count, Is.EqualTo(2));
         }
 
         [Test]
@@ -71,9 +72,9 @@ namespace Nucleus.UnitTests
                 m.ret();
             });
 
-            Assert.AreEqual(2, cfg.functions.Count);
+            Assert.That(cfg.functions.Count, Is.EqualTo(2));
             var fn1 = cfg.functions[0];
-            Assert.AreEqual(2, fn1.BBs.Count);
+            Assert.That(fn1.BBs.Count, Is.EqualTo(2));
         }
     }
 }

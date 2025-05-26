@@ -55,9 +55,9 @@ namespace Nucleus
      ******************************************************************************/
     public partial class AddressMap
     {
-        private SortedList<ulong, DisasmRegion> addrmap = new();
-        private List<ulong> unmapped = new();
-        private SortedList<ulong, int> unmapped_lookup = new();
+        private readonly SortedList<ulong, DisasmRegion> addrmap = new();
+        private readonly List<ulong> unmapped = new();
+        private readonly SortedList<ulong, int> unmapped_lookup = new();
 
         public void insert(ulong addr)
         {
@@ -169,7 +169,6 @@ namespace Nucleus
     {
         public static int init_disasm(Binary bin, List<DisasmSection> disasm)
         {
-
             disasm.Clear();
             for (var i = 0; i < bin.sections.Count; i++)
             {
@@ -191,7 +190,6 @@ namespace Nucleus
             return 0;
         }
 
-
         static int
         fini_disasm(Binary bin, List<DisasmSection> disasm)
         {
@@ -207,13 +205,12 @@ namespace Nucleus
             {
             case Binary.BinaryArch.ARCH_AARCH64:
                 return AArch64.nucleus_disasm_bb_aarch64(bin, dis, bb);
-/*            case Binary.BinaryArch.ARCH_ARM:
-                 return nucleus_disasm_bb_arm(bin, dis, bb);
+            case Binary.BinaryArch.ARCH_ARM:
+                return Arm.nucleus_disasm_bb_arm(bin, dis, bb);
             case Binary.BinaryArch.ARCH_MIPS:
-                return nucleus_disasm_bb_mips(bin, dis, bb);
+                return Mips.nucleus_disasm_bb_mips(bin, dis, bb);
             case Binary.BinaryArch.ARCH_PPC:
-                return nucleus_disasm_bb_ppc(bin, dis, bb);
-*/
+                return PowerPC.nucleus_disasm_bb_ppc(bin, dis, bb);
             case Binary.BinaryArch.ARCH_X86:
                 return X86.nucleus_disasm_bb_x86(bin, dis, bb);
             default:
@@ -227,7 +224,6 @@ namespace Nucleus
         nucleus_disasm_section(Binary bin, DisasmSection dis)
         {
             int ret;
-            uint i, n;
             ulong vma;
             double s;
             BB[] mutants = null;
@@ -244,23 +240,24 @@ namespace Nucleus
             Q.Enqueue(null);
             while (Q.Count > 0)
             {
-                n = options.strategy.function.mutate_function(dis, Q.Dequeue(), ref mutants);
-                for (i = 0; i < mutants.Length; i++)
+                options.strategy.function.mutate_function(dis, Q.Dequeue(), ref mutants);
+                for (uint i = 0; i < mutants.Length; i++)
                 {
                     if (!nucleus_disasm_bb(bin, dis, mutants[i]))
                     {
-                        goto fail;
+                        return -1;
                     }
                     if ((s = bb_score(dis, mutants[i])) < 0)
                     {
-                        goto fail;
+                        return -1;
                     }
                 }
+                uint n;
                 if ((n = (uint)options.strategy.function.select_function(dis, mutants, mutants.Length)) < 0)
                 {
-                    goto fail;
+                    return -1;
                 }
-                for (i = 0; i < n; i++)
+                for (uint i = 0; i < n; i++)
                 {
                     if (mutants[i].alive)
                     {
@@ -279,15 +276,7 @@ namespace Nucleus
                     }
                 }
             }
-
-            ret = 0;
-            goto cleanup;
-
-            fail:
-            ret = -1;
-
-            cleanup:
-            return ret;
+            return 0;
         }
 
 

@@ -1,4 +1,5 @@
 using Reko.Core;
+using Reko.Core.Expressions;
 using Reko.Core.Machine;
 using System;
 using System.IO;
@@ -7,13 +8,13 @@ namespace Nucleus
 {
     public static class InstructionExtensions
     {
-        public static Address target(this MachineInstruction self)
+        public static Address? target(this MachineInstruction self)
         {
             var iLast = self.Operands.Length - 1;
             if (iLast < 0)
                 return null;
-            if (self.Operands[iLast] is AddressOperand addr)
-                return addr.Address;
+            if (self.Operands[iLast] is Address addr)
+                return addr;
             return null;
         }
 
@@ -41,8 +42,8 @@ namespace Nucleus
             var last_op = self.Operands[^1];
             switch (self.InstructionClass & (InstrClass.Transfer | InstrClass.Call | InstrClass.Return)) {
             case InstrClass.Transfer:
-                return last_op is ImmediateOperand ||
-                       last_op is AddressOperand
+                return last_op is Constant ||
+                       last_op is Address
                     ? Edge.EdgeType.EDGE_TYPE_JMP
                     : Edge.EdgeType.EDGE_TYPE_JMP_INDIRECT;
             case InstrClass.Transfer|InstrClass.Return:
@@ -50,8 +51,8 @@ namespace Nucleus
             case InstrClass.Transfer|InstrClass.Call:
                 return last_op switch
                 {
-                    AddressOperand _ => Edge.EdgeType.EDGE_TYPE_CALL,
-                    ImmediateOperand _ => Edge.EdgeType.EDGE_TYPE_CALL,
+                    Address _ => Edge.EdgeType.EDGE_TYPE_CALL,
+                    Constant _ => Edge.EdgeType.EDGE_TYPE_CALL,
                     _ => Edge.EdgeType.EDGE_TYPE_CALL_INDIRECT
                 };
             //case InstrClass.Return:

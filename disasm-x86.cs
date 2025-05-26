@@ -24,20 +24,20 @@ namespace Nucleus
             switch (ins.Mnemonic) {
             case Mnemonic.mov:
                 /* mov reg,reg */
-                return (ins.Operands[0] is RegisterOperand rr1
-                   && ins.Operands[1] is RegisterOperand rr2
-                   && rr1.Register == rr2.Register);
+                return (ins.Operands[0] is RegisterStorage rr1
+                   && ins.Operands[1] is RegisterStorage rr2
+                   && rr1 == rr2);
             case Mnemonic.xchg:
                 /* xchg reg,reg */
-                return (ins.Operands[0] is RegisterOperand xr1
-                   && ins.Operands[1] is RegisterOperand xr2
-                   && xr1.Register == xr2.Register);
+                return (ins.Operands[0] is RegisterStorage xr1
+                   && ins.Operands[1] is RegisterStorage xr2
+                   && xr1 == xr2);
             case Mnemonic.lea:
                 /* lea    reg,[reg + 0x0] */
-                if ((ins.Operands[0] is RegisterOperand l1d)
+                if ((ins.Operands[0] is RegisterStorage l1d)
                    && (ins.Operands[1] is MemoryOperand l1m)
                    && (l1m.SegOverride == RegisterStorage.None)
-                   && (l1m.Base == l1d.Register)
+                   && (l1m.Base == l1d)
                    && (l1m.Index == RegisterStorage.None)
                    /* mem.scale is irrelevant since index is not used */
                    && (l1m.Offset is null || l1m.Offset.IsZero)) {
@@ -45,11 +45,11 @@ namespace Nucleus
                 }
                 /* lea    reg,[reg + eiz*x + 0x0] */
                 if (
-                      (ins.Operands[0] is RegisterOperand l2d)
+                      (ins.Operands[0] is RegisterStorage l2d)
                    && (ins.Operands[1] is MemoryOperand l2m)
                    && (l2m.SegOverride == RegisterStorage.None)
                    && (l2m.Base == RegisterStorage.None)
-                   && (l2m.Index == l2d.Register)
+                   && (l2m.Index == l2d)
                    && (l2m.Scale == 1)
                    && (l2m.Offset is null || l2m.Offset.IsZero)) {
                     return true;
@@ -145,7 +145,7 @@ namespace Nucleus
             if ((bb.start < dis.section.vma) || (offset >= dis.section.size))
             {
                 Log.print_err("basic block address points outside of section '{0}'", dis.section.name);
-                goto fail;
+                return false;
             }
             if (!arch.TryParseAddress(dis.section.vma.ToString("X"), out var addrSection))
             {
@@ -263,11 +263,7 @@ namespace Nucleus
                 bb.invalid = true;
                 bb.end += 1; /* ensure forward progress */
             }
-
             return true;
-
-            fail:
-            return false;
         }
     }
 }

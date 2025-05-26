@@ -71,8 +71,8 @@ is_cs_ret_ins(MipsInstruction ins)
 {
   /* jr ra */
   if(ins.Mnemonic == Mnemonic.jr
-     && ins.Operands[0] is RegisterOperand reg
-     && reg.Register == Registers.ra) {
+     && ins.Operands[0] is RegisterStorage reg
+     && reg == Registers.ra) {
     return true;
   }
 
@@ -134,7 +134,7 @@ is_cs_indirect_ins(MipsInstruction ins)
             }
         }
 
-        public static int nucleus_disasm_bb_mips(Binary bin, DisasmSection dis, BB bb)
+        public static bool nucleus_disasm_bb_mips(Binary bin, DisasmSection dis, BB bb)
         {
             bool ret, jmp, cflow, indir, cond, call, nop, only_nop, priv, trap;
             int ndisassembled;
@@ -144,7 +144,7 @@ is_cs_indirect_ins(MipsInstruction ins)
   var offset = bb.start - dis.section.vma;
   if((bb.start < dis.section.vma) || (offset >= dis.section.size)) {
     Log.print_err("basic block address points outside of section '{0}'", dis.section.name);
-    return -1;
+    return false;
   }
   var arch = bin.reko_arch;
   if (!arch.TryParseAddress(dis.section.vma.ToString("X"), out var addrSection))
@@ -197,7 +197,7 @@ is_cs_indirect_ins(MipsInstruction ins)
     }
 
     var ins = bb.insns[^1];
-    //ins.Mnemonic         = cs_ins.Mnemonic;
+    //ins.Mnemonic   = cs_ins.Mnemonic;
     //ins.start      = cs_ins.address;
     //ins.size       = cs_ins.size;
     //ins.mnem       = std::string(cs_ins.mnemonic);
@@ -254,7 +254,7 @@ is_cs_indirect_ins(MipsInstruction ins)
     bb.end += 1; /* ensure forward progress */
   }
 
-  return ndisassembled;
+  return ndisassembled > 0;
         }
     }
 }

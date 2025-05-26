@@ -1,13 +1,14 @@
 using Reko.Core;
+using Reko.Core.Expressions;
 using Reko.Core.Machine;
 using Reko.Core.Memory;
+using Reko.Core.Types;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-
-#pragma warning disable IDE1006
+using System.Threading;
 
 namespace Nucleus
 {
@@ -31,7 +32,9 @@ namespace Nucleus
 
         public void print_function_summaries(TextWriter @out)
         {
-            foreach (var f in this.functions) {
+            Console.WriteLine("Address             Length");
+            Console.WriteLine("==========================");
+            foreach (var f in this.functions.OrderBy(ff => ff.id)) {
                 f.print_summary(@out);
             }
         }
@@ -50,15 +53,13 @@ namespace Nucleus
 
 void analyze_addrtaken_ppc()
 {
-#if NYI
-            /* Instructions can get reordered, so we emulate the ISA subset relevant for the patterns below,
-             * clearing the intermediate register values with with -1 if the result is irrelevant or undefined. */
-            ulong [] registers = new ulong[32];
+  /* Instructions can get reordered, so we emulate the ISA subset relevant for the patterns below,
+   * clearing the intermediate register values with with -1 if the result is irrelevant or undefined. */
+  ulong [] registers = new ulong[32];
   Array.Fill(registers, ~0u);
-  foreach (var kv in  this.start2bb) {
-    var bb = kv.Value;
+  foreach (var bb in this.start2bb.Values) {
     foreach (var ins in bb.insns) {
-      if(ins.Operands.Length < 2) {
+      if (ins.Operands.Length < 2) {
         continue;
       }
       /* Pattern #1 (32-bit)
@@ -69,58 +70,54 @@ void analyze_addrtaken_ppc()
        * - Using addis/ori:
        *     lis    rN, .L@ha
        *     ori    rN, rN, .L@l */
-      if(ins.MnemonicAsInteger == (int) Reko.Arch.PowerPC.Mnemonic.addis) {
-        int dst = ((RegisterOperand)ins.Operands[0]).Register.Number;
-        ulong imm = ((ImmediateOperand)ins.Operands[2]).Value.ToUInt32();
+      if (ins.MnemonicAsInteger == (int) Reko.Arch.PowerPC.Mnemonic.addis) {
+        int dst = ((RegisterStorage)ins.Operands[0]).Number;
+        ulong imm = ((Constant)ins.Operands[2]).ToUInt32();
         Debug.Assert(dst < 32);
         registers[dst] = imm << 16;
       }
       else if (ins.MnemonicAsInteger == (int)Reko.Arch.PowerPC.Mnemonic.addi ||
                ins.MnemonicAsInteger == (int)Reko.Arch.PowerPC.Mnemonic.ori) {
-        int lhs = ((RegisterOperand)ins.Operands[1]).Register.Number;
-        ulong rhs = ((ImmediateOperand)ins.Operands[2]).Value.ToUInt32();
+        int lhs = ((RegisterStorage)ins.Operands[1]).Number;
+        ulong rhs = ((Constant)ins.Operands[2]).ToUInt32();
         Debug.Assert(lhs < 32);
         if (registers[lhs] != ~0u) {
           mark_addrtaken(registers[lhs] | rhs);
         }
       }
-      else if (ins.Operands[0].type == Operand.OP_TYPE_REG
-           && ins.Operands[0].ppc_value.reg >= PPC_REG_R0
-           && ins.Operands[0].ppc_value.reg <= PPC_REG_R31) {
-        uint dst = ins.Operands[0].ppc_value.reg - PPC_REG_R0;
-        registers[dst] = ~0u;
+      else if (ins.Operands[0] is RegisterStorage reg
+           && reg.Number >= 0
+           && reg.Number <= 31) {
+        registers[reg.Number] = ~0u;
       }
     }
   }
-#endif
 }
 
 
-void 
-analyze_addrtaken_x86()
+void analyze_addrtaken_x86()
 {
-  foreach (var kv in this.start2bb) {
-    var bb = kv.Value;
+  foreach (var bb in this.start2bb.Values) {
     foreach (var ins in bb.insns) {
       if(ins.Operands.Length < 2) {
         continue;
       }
       var op_dst = ins.Operands[0];
       var op_src = ins.Operands[1];
-      if(((op_dst is RegisterOperand) || (op_dst is Reko.Arch.X86.MemoryOperand))) {
-        if (op_src is ImmediateOperand imm)
+      if((op_dst is RegisterStorage || op_dst is Reko.Arch.X86.MemoryOperand)) {
+        if (op_src is Constant imm)
         {
-                            if (this.binary.reko_arch.PointerType.BitSize == imm.Value.DataType.BitSize)
-                            {
-                                mark_addrtaken(imm.Value.ToUInt64());
-                            } else if (ins.Address.Selector.HasValue)
-                            {
-                                var addr = ins.Address.NewOffset(imm.Value.ToUInt32());
-                                mark_addrtaken(addr.ToLinear());
-                            }
-                        }
-        else if (op_src is AddressOperand addr)
-            mark_addrtaken(addr.Address.ToLinear());
+            if (this.binary.reko_arch.PointerType.BitSize == imm.DataType.BitSize)
+            {
+                mark_addrtaken(imm.ToUInt64());
+            } else if (ins.Address.Selector.HasValue)
+            {
+                var addr = ins.Address.NewOffset(imm.ToUInt32());
+                mark_addrtaken(addr.ToLinear());
+            }
+        }
+        else if (op_src is Address addr)
+            mark_addrtaken(addr.ToLinear());
       }
     }
   }
@@ -144,7 +141,7 @@ analyze_addrtaken_x86()
                             var aaddr = last.target();
                             if (aaddr is not null) //$BUG: x86 return statements 
                             {
-                                link_bbs(last.edge_type(), bb, aaddr.ToLinear());
+                                link_bbs(last.edge_type(), bb, aaddr.Value.ToLinear());
                             }
                         }
                         if ((flags & InstructionFlags.INS_FLAG_CALL) != 0 || (flags & InstructionFlags.INS_FLAG_COND) != 0)
@@ -162,11 +159,7 @@ analyze_addrtaken_x86()
             }
         }
 
-
-
-
-        void
-        analyze_addrtaken()
+        void analyze_addrtaken()
         {
             Log.verbose(1, "starting address-taken analysis");
 
@@ -182,7 +175,6 @@ analyze_addrtaken_x86()
                 Log.print_warn("address-taken analysis not yet supported for {0}", this.binary.arch_str);
                 break;
             }
-
             Log.verbose(1, "address-taken analysis complete");
         }
 
@@ -401,12 +393,11 @@ find_switches_aarch64()
 }
 
 
-void
-find_switches_arm()
+void find_switches_arm()
 {
-#if NYI
-            int scale = 4;
-    ulong jmptab_addr, jmptab_idx, jmptab_end, case_addr;
+#if !NYI
+    int scale = 4;
+    ulong jmptab_addr, jmptab_idx, jmptab_end;
 
     foreach (var bb in this.start2bb.Values)
     {
@@ -434,25 +425,25 @@ find_switches_arm()
                  *     ldrls   pc, [pc, rN, lsl#2]
                  */
                 if (ins.MnemonicAsInteger == (int)Reko.Arch.Arm.AArch32.Mnemonic.add &&
-                   ins.Operands[1] is RegisterOperand reg &&
-                   reg.Register.Number == 15 &&  // PC register
-                   ins.Operands[2] is ImmediateOperand imm)
+                   ins.Operands[1] is RegisterStorage reg &&
+                   reg.Number == 15 &&  // PC register
+                   ins.Operands[2] is Constant imm)
                 {
-                    jmptab_addr = (ins.Address.ToLinear() + 8) + (ulong)imm.Value.ToInt64();
+                    jmptab_addr = (ins.Address.ToLinear() + 8) + (ulong)imm.ToInt64();
                     break;
                 }
                 else if (ins.MnemonicAsInteger == (int)Reko.Arch.Arm.AArch32.Mnemonic.adr &&
-                         ((RegisterOperand)ins.Operands[0]).Register.Number == 15) // PC register
+                         ((RegisterStorage)ins.Operands[0]).Number == 15) // PC register
                 {
-                    ulong immv = (ulong) ((ImmediateOperand)ins.Operands[1]).Value.ToInt64();
+                    ulong immv = (ulong) ((Constant)ins.Operands[1]).ToInt64();
                     jmptab_addr = (ins.Address.ToLinear() + 8) + immv;
                     break;
                 }
-                else if (ins.MnemonicAsInteger == (int)Reko.Arch.Arm.AArch32.Mnemonic.ldr &&
-                     && ins.Operands[0].arm_value.reg == ARM_REG_PC
-                     && ins.Operands[1].arm_value.reg == ARM_REG_PC)
+                else if (ins.MnemonicAsInteger == (int)Reko.Arch.Arm.AArch32.Mnemonic.ldr
+                     && ((RegisterStorage) ins.Operands[0]).Number == 15 // ARM_REG_PC
+                     && ((Reko.Arch.Arm.AArch32.MemoryOperand)ins.Operands[1]).BaseRegister?.Number == 15) // ARM_REG_PC)
                 {
-                    jmptab_addr = (ins.start + 8);
+                    jmptab_addr = (ins.Address .ToLinear() + 8);
                     break;
                 }
             }
@@ -469,42 +460,40 @@ find_switches_arm()
                             jmptab_addr, bb.insns[^1].Address);
                     jmptab_idx = jmptab_addr - sec.vma;
                     jmptab_end = jmptab_addr;
-                    var jmptab = (EndianImageReader)sec.bytes[jmptab_idx];
-                    while (true)
+                    var jmptab = new LeImageReader(sec.bytes, (long)jmptab_idx);
+                            var wScale = PrimitiveType.CreateWord(scale * 8);
+                    while (jmptab.TryRead(wScale, out Constant case_addr))
                     {
-                        if ((jmptab_idx + scale) > sec.size) break;
-                        jmptab_end += scale;
-                        jmptab_idx += scale;
-                        case_addr = uint32_t(read_le_i32(jmptab++));
-                        if (!case_addr) break;
-                        if (!target_sec.contains(case_addr))
+                        jmptab_end += (uint)scale;
+                        jmptab_idx += (uint)scale;
+                        if (!target_sec.contains(case_addr.ToUInt64()))
                         {
                             break;
                         }
                         else
                         {
-                            cc = this.get_bb(case_addr, &offset);
-                            if (!cc) break;
-                            conflict_edge = NULL;
-                            for (auto & e: cc.ancestors)
+                            var (cc, offset) = this.get_bb(Address.FromConstant(case_addr));
+                            if (cc is null) break;
+                            Edge conflict_edge = null;
+                            foreach (var e in cc.ancestors)
                             {
                                 if (e.is_switch)
                                 {
-                                    conflict_edge = &e;
+                                    conflict_edge = e;
                                     break;
                                 }
                             }
-                            if (conflict_edge && (conflict_edge.jmptab <= jmptab_addr))
+                            if (conflict_edge is not null  && (conflict_edge.jmptab <= jmptab_addr))
                             {
-                                verbose(3, "removing switch edge 0x%016jx . 0x%016jx (detected overlapping jump table or case)",
-                                        conflict_edge.src.insns[^1].start, case_addr);
+                                Log.verbose(3, "removing switch edge 0x%016jx . 0x%016jx (detected overlapping jump table or case)",
+                                        conflict_edge.src.insns[^1].Address, case_addr);
                                 unlink_edge(conflict_edge.src, cc);
-                                conflict_edge = NULL;
+                                conflict_edge = null;
                             }
-                            if (!conflict_edge)
+                            if (conflict_edge is null)
                             {
-                                verbose(3, "adding switch edge 0x%016jx . 0x%016jx", bb.insns[^1].start, case_addr);
-                                link_bbs(Edge::EDGE_TYPE_JMP_INDIRECT, bb, case_addr, jmptab_addr);
+                                Log.verbose(3, "adding switch edge 0x%016jx . 0x%016jx", bb.insns[^1].Address, case_addr);
+                                link_bbs(Edge.EdgeType.EDGE_TYPE_JMP_INDIRECT, bb, case_addr.ToUInt64(), jmptab_addr);
                             }
                         }
                     }
@@ -512,7 +501,7 @@ find_switches_arm()
                 }
             }
 
-            if (jmptab_addr && jmptab_end)
+            if (jmptab_addr != 0 && jmptab_end != 0)
             {
                 mark_jmptab_as_data(jmptab_addr, jmptab_end);
             }
@@ -723,11 +712,9 @@ void find_switches_mips()
 }
 
 
-void
-find_switches_ppc()
+void find_switches_ppc()
 {
-#if NYI
-            int scale;
+    int scale;
     ulong jmptab_addr, jmptab_idx, jmptab_end, case_addr;
 
     /* Instructions can get reordered, so we emulate the ISA subset relevant for the patterns below,
@@ -764,16 +751,16 @@ find_switches_ppc()
                 var mnem = ins.MnemonicAsInteger;
                 if (mnem == (int) Reko.Arch.PowerPC.Mnemonic.oris)
                 {
-                    int dst = ((RegisterOperand)ins.Operands[0]).Register.Number;
-                    uint imm = ((ImmediateOperand)ins.Operands[2]).Value.ToUInt32();
+                    int dst = ((RegisterStorage)ins.Operands[0]).Number;
+                    uint imm = ((Constant)ins.Operands[2]).ToUInt32();
                     Debug.Assert(dst < 32);
                     registers[dst] = imm << 16;
                 }
                 else if (mnem == (int)Reko.Arch.PowerPC.Mnemonic.addi ||
                          mnem == (int)Reko.Arch.PowerPC.Mnemonic.ori)
                 {
-                    int lhs = ((RegisterOperand)ins.Operands[0]).Register.Number;
-                    uint rhs = ((ImmediateOperand)ins.Operands[2]).Value.ToUInt32();
+                    int lhs = ((RegisterStorage)ins.Operands[0]).Number;
+                    uint rhs = ((Constant)ins.Operands[2]).ToUInt32();
                     Debug.Assert(lhs < 32);
                     if (registers[lhs] != ~0ul)
                     {
@@ -781,11 +768,11 @@ find_switches_ppc()
                         break;
                     }
                 }
-                else if (ins.Operands[0] is RegisterOperand reg
-                     && reg.Register.Number >= 0
-                     && reg.Register.Number <= 31)
+                else if (ins.Operands[0] is RegisterStorage reg
+                     && reg.Number >= 0
+                     && reg.Number <= 31)
                 {
-                    registers[reg.Register.Number] = ~0ul;
+                    registers[reg.Number] = ~0ul;
                 }
             }
         }
@@ -801,8 +788,8 @@ find_switches_ppc()
                             jmptab_addr, bb.insns[^1].Address);
                     jmptab_idx = jmptab_addr - sec.vma;
                     jmptab_end = jmptab_addr;
-                    EndianImageReader jmptab32 = (EndianImageReader) sec.bytes[jmptab_idx];
-                    EndianImageReader jmptab64 = (EndianImageReader) sec.bytes[jmptab_idx];
+                    EndianImageReader jmptab32 = this.binary.reko_arch.CreateImageReader(new ByteMemoryArea(Address.Ptr32((uint)sec.vma), sec.bytes), (uint)jmptab_idx);
+                    EndianImageReader jmptab64 = this.binary.reko_arch.CreateImageReader(new ByteMemoryArea(Address.Ptr64(sec.vma), sec.bytes), (uint)jmptab_idx);
                     while (true)
                     {
                         if ((jmptab_idx + (uint) scale) > sec.size) break;
@@ -828,7 +815,7 @@ find_switches_ppc()
                         }
                         else
                         {
-                            var cc = this.get_bb(case_addr, out var offset);
+                            var (cc, offset) = this.get_bb(case_addr);
                             if (cc is null) break;
                             Edge conflict_edge = null;
                             foreach (var e in cc.ancestors)
@@ -863,12 +850,10 @@ find_switches_ppc()
             }
         }
     }
-#endif
 }
 
 
-void
-find_switches_x86()
+void find_switches_x86()
 {
 #if NYI
             Edge conflict_edge;
@@ -1087,7 +1072,7 @@ void expand_function(Function f, BB bb)
         }
     }
 
-    /* Follow links to target blocks */
+            /* Follow links to target blocks */
             foreach (var e in bb.targets) {
                 if ((e.type == Edge.EdgeType.EDGE_TYPE_CALL)
                    || (e.type == Edge.EdgeType.EDGE_TYPE_CALL_INDIRECT)
@@ -1149,7 +1134,7 @@ void expand_function(Function f, BB bb)
             ulong entry;
 
             if (this.entry.Count > 0) {
-        /* entry point already known */
+                /* entry point already known */
                 Log.verbose(3, "cfg entry point@0x{0:X16}", this.entry.First().start);
                 return;
             }
@@ -1178,7 +1163,8 @@ void expand_function(Function f, BB bb)
                     break;
                 }
             }
-            if (call_fallthrough && (noplen > 1)) continue;
+            if (call_fallthrough && (noplen > 1))
+                        continue;
             bb.padding = false;
             link_bbs(Edge.EdgeType.EDGE_TYPE_FALLTHROUGH, bb, bb.end);
         }
@@ -1231,13 +1217,13 @@ void expand_function(Function f, BB bb)
             }
         }
 
-        (BB bb, int offset) get_bb(Address addr)
+        (BB bb, int offset) get_bb(Address? addr)
         {
             if (addr is null)
             {
                 return (null, 0);
             }
-            return get_bb(addr.ToLinear());
+            return get_bb(addr.Value.ToLinear());
         }
 
         (BB bb, int offset) get_bb(ulong addr)
@@ -1250,6 +1236,7 @@ void expand_function(Function f, BB bb)
 
             int lo = 0;
             int hi = this.start2bb.Count - 1;
+
             while (lo <= hi)
             {
                 int mid = lo + (hi - lo) / 2;

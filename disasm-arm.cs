@@ -1,6 +1,6 @@
 using Reko.Arch.Arm.AArch32;
 using Reko.Core;
-using Reko.Core.Machine;
+using Reko.Core.Expressions;
 using Reko.Core.Memory;
 using System.Collections.Generic;
 
@@ -90,8 +90,8 @@ static bool is_cs_indirect_ins(A32Instruction ins)
             return (ins.InstructionClass &(InstrClass.Transfer|InstrClass.Return))
                 == InstrClass.Transfer
                 && ins.Operands.Length > 0
-                && (ins.Operands[^1] is not AddressOperand)
-                && (ins.Operands[^1] is not ImmediateOperand);
+                && (ins.Operands[^1] is not Address)
+                && (ins.Operands[^1] is not Constant);
 }
 
 
@@ -106,7 +106,7 @@ static bool is_cs_privileged_ins(A32Instruction ins)
 
 
 
-public static int nucleus_disasm_bb_arm(Binary bin, DisasmSection dis, BB bb)
+public static bool nucleus_disasm_bb_arm(Binary bin, DisasmSection dis, BB bb)
 {
             bool ret, jmp, indir, cflow, cond, call, nop, only_nop, priv, trap;
             int ndisassembled;
@@ -126,14 +126,14 @@ public static int nucleus_disasm_bb_arm(Binary bin, DisasmSection dis, BB bb)
     offset = bb.start - dis.section.vma;
     if ((bb.start < dis.section.vma) || (offset >= dis.section.size)) {
         Log.print_err("basic block address points outside of section '{0}'.", dis.section.name);
-        return -1; ;
+        return false;
     }
 
     if (!arch.TryParseAddress(dis.section.vma.ToString("X"), out var addrSection))
     {
         Log.print_err("Lolwut: {0:X}", dis.section.vma);
     }
-    var mem = arch.CreateMemoryArea(addrSection, dis.section.bytes);
+    var mem = arch.CreateCodeMemoryArea(addrSection, dis.section.bytes);
     var pc = arch.CreateImageReader(mem, (long)offset);
     ulong n = dis.section.size - offset;
     pc_addr = bb.start;
@@ -235,12 +235,13 @@ public static int nucleus_disasm_bb_arm(Binary bin, DisasmSection dis, BB bb)
   if(ndisassembled == 0) {
     bb.invalid = true;
     bb.end += (uint)(arch.InstructionBitSize / arch.MemoryGranularity); /* ensure forward progress */
+                return true;
   }
 
-  return ndisassembled;
+  return true;
 
   fail:
-  return -1;
+  return false;
 
 }}
 }

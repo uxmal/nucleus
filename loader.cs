@@ -100,19 +100,19 @@ namespace Nucleus
     partial class Nucleus
     {
         static string[][] binary_types_descr = {
-  new[] {"auto", "Try to automatically determine binary format (default)"},
-  new[] {"raw" , "Raw binary (memory dump, ROM, network capture, ...)"},
-  new[] {"elf" , "Unix ELF"},
-  new[] {"pe"  , "Windows PE"},
+            new[] {"auto", "Try to automatically determine binary format (default)"},
+            new[] {"raw" , "Raw binary (memory dump, ROM, network capture, ...)"},
+            new[] {"elf" , "Unix ELF"},
+            new[] {"pe"  , "Windows PE"},
 };
 
         public static (string str, Binary.BinaryArch arch, string description)[] binary_arch_descr = {
-  ("auto"    , Binary.BinaryArch.ARCH_NONE, "Try to automatically determine architecture (default)"),
-  ("aarch64" , Binary.BinaryArch.ARCH_AARCH64, "aarch64 (experimental)"),
-  ("arm"     , Binary.BinaryArch.ARCH_ARM,     "arm (experimental)"),
-  ("mips"    , Binary.BinaryArch.ARCH_MIPS,    "mips (experimental)"),
-  ("ppc"     , Binary.BinaryArch.ARCH_PPC, "ppc: Specify ppc-32 or ppc-64 (default ppc-64, experimental)"),
-  ("x86"     , Binary.BinaryArch.ARCH_X86, "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"),
+            ("auto"    , Binary.BinaryArch.ARCH_NONE, "Try to automatically determine architecture (default)"),
+            ("aarch64" , Binary.BinaryArch.ARCH_AARCH64, "aarch64 (experimental)"),
+            ("arm"     , Binary.BinaryArch.ARCH_ARM,     "arm (experimental)"),
+            ("mips"    , Binary.BinaryArch.ARCH_MIPS,    "mips (experimental)"),
+            ("ppc"     , Binary.BinaryArch.ARCH_PPC, "ppc: Specify ppc-32 or ppc-64 (default ppc-64, experimental)"),
+            ("x86"     , Binary.BinaryArch.ARCH_X86, "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"),
         };
 
         #region BFD
@@ -187,7 +187,6 @@ namespace Nucleus
 
         static bfd open_bfd(string fname)
         {
-
             bfd bin;
 
             if (!bfd_inited) {

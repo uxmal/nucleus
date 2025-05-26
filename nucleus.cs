@@ -31,15 +31,15 @@ namespace Nucleus
                 }
 
                 Log.verbose(1, "loaded binary '{0}' {1}/{2} ({3} bits) entry@{4}",
-                        bin.filename,
-                        bin.type_str, bin.arch_str,
-                        bin.bits, bin.entry);
+                    bin.filename,
+                    bin.type_str, bin.arch_str,
+                    bin.bits, bin.entry);
                 for (i = 0; i < bin.sections.Count; i++)
                 {
                     sec = bin.sections[i];
                     Log.verbose(1, "  0x{0:X16} {1,8} {2,-20} {3}",
-                            sec.vma, sec.size, sec.name,
-                            sec.type == SectionType.CODE ? "CODE" : "DATA");
+                        sec.vma, sec.size, sec.name,
+                        sec.type == SectionType.CODE ? "CODE" : "DATA");
                 }
                 if (bin.symbols.Count > 0)
                 {

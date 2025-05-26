@@ -82,11 +82,11 @@ namespace Nucleus
                 foreach (var instr in parent.insns)
                 {
                     var target = instr.target();
-                    if (target is not null && dis.section.contains(target.ToLinear())
-                       && (dis.addrmap.addr_type(target.ToLinear()) & DisasmRegion.BB_START) == 0)
+                    if (target is not null && dis.section.contains(target.Value.ToLinear())
+                       && (dis.addrmap.addr_type(target.Value.ToLinear()) & DisasmRegion.BB_START) == 0)
                     {
                         /* recursively queue the target BB for disassembly */
-                        mutants[n++].set(target.ToLinear(), 0);
+                        mutants[n++].set(target.Value.ToLinear(), 0);
                     }
                     if ((n + 1) == max_mutants) break;
                 }

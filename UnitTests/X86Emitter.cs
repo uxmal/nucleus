@@ -44,7 +44,7 @@ namespace Nucleus.UnitTests
             this.bb = null;
         }
 
-        public RegisterOperand eax { get; } = new RegisterOperand(Registers.eax);
+        public RegisterStorage eax { get; } = Registers.eax;
 
         public void label(string label)
         {
@@ -62,7 +62,7 @@ namespace Nucleus.UnitTests
 
         public void mov(MachineOperand dst, MachineOperand src)
         {
-            var instr = new X86Instruction(Mnemonic.mov, InstrClass.Linear, dst.Width, PrimitiveType.Ptr32, dst, src);
+            var instr = new X86Instruction(Mnemonic.mov, InstrClass.Linear, dst.DataType, PrimitiveType.Ptr32, dst, src);
             Emit(instr, 2 + (src is MemoryOperand ? 4 : 1));
         }
 
@@ -74,16 +74,16 @@ namespace Nucleus.UnitTests
         }
 
 
-        private AddressOperand EnsureSymbolOperand(string label, int iop)
+        private Address EnsureSymbolOperand(string label, int iop)
         {
             if (symbols.TryGetValue(label, out var symbol) && symbol.resolved)
             {
-                return AddressOperand.Create(symbol.addr);
+                return symbol.addr;
             }
             symbol = new EmitterSymbol();
             symbol.backpatches.Add((this.addr, iop));
             symbols[label] = symbol;
-            return AddressOperand.Create(Address.Ptr64(~0u));
+            return Address.Ptr64(~0u);
         }
 
         private void DefineSymbol(string label)
@@ -92,7 +92,7 @@ namespace Nucleus.UnitTests
             {
                 foreach (var (addr, iop) in symbol.backpatches)
                 {
-                    instrs[addr].Operands[iop] = AddressOperand.Create(this.addr);
+                    instrs[addr].Operands[iop] = this.addr;
                 }
             }
             var sym = new EmitterSymbol { addr = this.addr, resolved = true };
