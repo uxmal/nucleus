@@ -28,7 +28,7 @@ public class GetOpt
         return dict;
     }
 
-    public int getopt(out string optarg)
+    public int getopt(out string? optarg)
     {
         if (i >= argv.Length)
         {
@@ -48,6 +48,7 @@ public class GetOpt
             }
             return arg[1];
         }
-        throw new NotImplementedException();
+        optarg = null;
+        return -1;
     }
 }

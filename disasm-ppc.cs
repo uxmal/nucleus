@@ -222,7 +222,7 @@ nucleus_disasm_bb_ppc(Binary bin, DisasmSection dis, BB bb)
     cs_mode_flags = (cs_mode)(CS_MODE_BIG_ENDIAN);
     break;
   default:
-    Log.print_err("unsupported bit width %u for architecture %s", bin.bits, bin.arch_str.c_str());
+    Log.print_err("unsupported bit width {0} for architecture {1}", bin.bits, bin.arch_str.c_str());
     goto fail;
   }
 

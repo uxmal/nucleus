@@ -55,7 +55,6 @@ namespace Nucleus
                     Constant _ => Edge.EdgeType.EDGE_TYPE_CALL,
                     _ => Edge.EdgeType.EDGE_TYPE_CALL_INDIRECT
                 };
-            //case InstrClass.Return:
             default:
                 return Edge.EdgeType.EDGE_TYPE_NONE;
             }

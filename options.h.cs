@@ -30,12 +30,12 @@ namespace Nucleus
         }
         public binary_options binary;
 
-        public struct strategy_options
+        public class strategy_options
         {
             public string name;
-            public Strategy function;
+            public Strategy function { get; set; }
         }
-        public strategy_options strategy;
+        public strategy_options strategy = new();
     }
 
     //static int parse_options(string[] args);

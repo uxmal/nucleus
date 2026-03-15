@@ -16,43 +16,42 @@ namespace Nucleus
             //extern const char *binary_types_descr[][2];
             //extern const char *binary_arch_descr[][2];
 
-            /*
-            Console.Write(NUCLEUS_VERSION"\n");
-            Console.Write(NUCLEUS_CREDITS"\n");
-            Console.Write("\n%s [-vwhtafbDpgi] -e <binary> -d <strategy>\n", prog);
-            Console.Write("  -e <binary>\n");
-            Console.Write("     : target binary\n");
-            Console.Write("  -d <strategy>\n");
-            Console.Write("     : select disassembly strategy\n");
-            foreach (var si = 0; strategy_functions; i++) {
-                Console.Write("         %-12s %s\n", strategy_functions[i], strategy_functions_doc[i]);
+            Console.WriteLine(NUCLEUS_VERSION);
+            Console.WriteLine(NUCLEUS_CREDITS);
+            Console.WriteLine();
+            Console.WriteLine("{0} [-vwhtafbDpgi] -e <binary> -d <strategy>", prog);
+            Console.WriteLine("  -e <binary>");
+            Console.WriteLine("     : target binary");
+            Console.WriteLine("  -d <strategy>");
+            Console.WriteLine("     : select disassembly strategy");
+            foreach (var (si, _, doc) in Nucleus.strategy_functions) {
+                Console.WriteLine($"         {si,-12} {doc}");
             }
-            Console.Write("  -t <binary format>\n");
-            Console.Write("     : hint on binary format (may be ignored)\n");
-            for (i = 0; binary_types_descr[i][0]; i++) {
-                Console.Write("         %-12s %s\n", binary_types_descr[i][0], binary_types_descr[i][1]);
+            Console.WriteLine("  -t <binary format>");
+            Console.WriteLine("     : hint on binary format (may be ignored)");
+            for (var i = 0; i <Nucleus.binary_types_descr.Length; i++) {
+                Console.WriteLine("         {0,-12} {1}", binary_types_descr[i][0], binary_types_descr[i][1]);
             }
-            Console.Write("  -a <arch>\n");
-            Console.Write("     : disassemble as specified instruction architecture (only for raw binaries)\n");
-            for (i = 0; binary_arch_descr[i][0]; i++) {
-                Console.Write("         %-12s %s\n", binary_arch_descr[i][0], binary_arch_descr[i][1]);
+            Console.WriteLine("  -a <arch>");
+            Console.WriteLine("     : disassemble as specified instruction architecture (only for raw binaries)");
+            foreach (var (ai, _, doc) in Nucleus.binary_arch_descr) {
+                Console.WriteLine($"         {ai,-12} {doc}");
             }
-            Console.Write("  -f : produce list of function entry points and sizes\n");
-            Console.Write("  -b <vma>\n");
-            Console.Write("     : binary base vma (only for raw binaries)\n");
-            Console.Write("  -D : disassemble data sections as code\n");
-            Console.Write("  -p : allow privileged instructions\n");
-            Console.Write("  -g <file>\n");
-            Console.Write("     : export CFG to graphviz dot file\n");
-            Console.Write("  -i <file>\n");
-            Console.Write("     : export binary info to IDA Pro script\n");
-            Console.Write("  -v : verbose\n");
-            Console.Write("  -w : disable warnings\n");
-            Console.Write("  -h : help\n");
-            Console.Write("\nConfiguration used in paper 'Compiler-Agnostic Function Detection in Binaries':\n");
-            Console.Write("    %s -d linear -f -e <binary>\n", prog);
-            Console.Write("\n");
-            */
+            Console.WriteLine("  -f : produce list of function entry points and sizes");
+            Console.WriteLine("  -b <vma>");
+            Console.WriteLine("     : binary base vma (only for raw binaries)");
+            Console.WriteLine("  -D : disassemble data sections as code");
+            Console.WriteLine("  -p : allow privileged instructions");
+            Console.WriteLine("  -g <file>");
+            Console.WriteLine("     : export CFG to graphviz dot file");
+            Console.WriteLine("  -i <file>");
+            Console.WriteLine("     : export binary info to IDA Pro script");
+            Console.WriteLine("  -v : verbose");
+            Console.WriteLine("  -w : disable warnings");
+            Console.WriteLine("  -h : help");
+            Console.WriteLine("\nConfiguration used in paper 'Compiler-Agnostic Function Detection in Binaries':");
+            Console.WriteLine("    {0} -d linear -f -e <binary>", prog);
+            Console.WriteLine("");
         }
 
 
@@ -105,7 +104,7 @@ namespace Nucleus
                 }
               }
               if(binary_types_descr[i][0] == null) {
-                Console.Write("ERROR: Unrecognized binary format '%s'\n", optarg);
+                Console.WriteLine("ERROR: Unrecognized binary format '{0}'", optarg);
                 print_usage(argv[0]);
                 return -1;
               }
@@ -128,7 +127,7 @@ namespace Nucleus
                 options.binary.bits = Convert.ToUInt32(s);
               }
               if(i >= binary_arch_descr.Length) {
-                Console.Write("ERROR: Unrecognized binary architecture '%s'\n", optarg);
+                Console.WriteLine("ERROR: Unrecognized binary architecture '{0}'", optarg);
                 print_usage(argv[0]);
                 return -1;
               }
@@ -141,7 +140,7 @@ namespace Nucleus
             case 'b':
               options.binary.base_vma = Convert.ToUInt64(optarg, 16);
               if(options.binary.base_vma == 0) {
-                Console.Write("ERROR: Invalid binary base address {0}\n", optarg);
+                Console.WriteLine("ERROR: Invalid binary base address {0}", optarg);
                 return -1;
               }
               break;

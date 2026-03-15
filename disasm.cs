@@ -6,8 +6,6 @@ using System.Linq;
 
 namespace Nucleus
 {
-    using static capstone;
-
     [Flags]
     public enum DisasmRegion : ushort
     {
@@ -26,10 +24,10 @@ namespace Nucleus
      ******************************************************************************/
     public partial class DisasmSection
     {
-        public Section section;
+        public Section? section;
         public AddressMap addrmap = new();
-        public List<BB> BBs = new();
-        public List<DataRegion> data = new();
+        public List<BB> BBs = [];
+        public List<DataRegion> data = [];
 
         public void print_BBs(TextWriter @out)
         {
@@ -55,9 +53,9 @@ namespace Nucleus
      ******************************************************************************/
     public partial class AddressMap
     {
-        private readonly SortedList<ulong, DisasmRegion> addrmap = new();
-        private readonly List<ulong> unmapped = new();
-        private readonly SortedList<ulong, int> unmapped_lookup = new();
+        private readonly SortedList<ulong, DisasmRegion> addrmap = [];
+        private readonly List<ulong> unmapped = [];
+        private readonly SortedList<ulong, int> unmapped_lookup = [];
 
         public void insert(ulong addr)
         {
@@ -170,6 +168,7 @@ namespace Nucleus
         public static int init_disasm(Binary bin, List<DisasmSection> disasm)
         {
             disasm.Clear();
+            bin.create_reko_architecture();
             for (var i = 0; i < bin.sections.Count; i++)
             {
                 var sec = bin.sections[i];
@@ -185,7 +184,6 @@ namespace Nucleus
                     dis.addrmap.insert(vma);
                 }
             }
-            bin.create_reko_architecture();
             Log.verbose(1, "disassembler initialized");
             return 0;
         }
@@ -223,11 +221,10 @@ namespace Nucleus
         static int
         nucleus_disasm_section(Binary bin, DisasmSection dis)
         {
-            int ret;
             ulong vma;
             double s;
-            BB[] mutants = null;
-            Queue<BB> Q = new();
+            BB[]? mutants = null;
+            Queue<BB?> Q = [];
 
             if ((dis.section.type != SectionType.CODE) && options.only_code_sections)
             {
@@ -241,6 +238,7 @@ namespace Nucleus
             while (Q.Count > 0)
             {
                 options.strategy.function.mutate_function(dis, Q.Dequeue(), ref mutants);
+                Debug.Assert(mutants != null);
                 for (uint i = 0; i < mutants.Length; i++)
                 {
                     if (!nucleus_disasm_bb(bin, dis, mutants[i]))
@@ -280,7 +278,7 @@ namespace Nucleus
         }
 
 
-        static int nucleus_disasm(Binary bin, List<DisasmSection> disasm)
+        public static int nucleus_disasm(Binary bin, List<DisasmSection> disasm)
         {
             if (init_disasm(bin, disasm) < 0)
             {
@@ -303,4 +301,3 @@ namespace Nucleus
         }
     }
 }
-

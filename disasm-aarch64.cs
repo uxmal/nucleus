@@ -183,7 +183,7 @@ nucleus_disasm_bb_aarch64(Binary bin, DisasmSection dis, BB bb)
   var arch = new Arm64Architecture(null, "aarch64", new());
   offset = bb.start - dis.section.vma;
   if((bb.start < dis.section.vma) || (offset >= dis.section.size)) {
-    Log.print_err("basic block address points outside of section '%s'", dis.section.name);
+    Log.print_err("basic block address points outside of section '{0}'", dis.section.name);
     goto fail;
   }
 

@@ -1,7 +1,12 @@
 using Reko.Core;
+using Reko.Core.Loading;
+using Reko.Core.Memory;
+using Reko.Loading;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.IO;
+using System.Linq;
 
 namespace Nucleus
 {
@@ -16,7 +21,7 @@ namespace Nucleus
         public Symbol() { type = SymbolType.SYM_TYPE_UKN; name = null; addr = 0; }
 
         public SymbolType type;
-        public string name;
+        public string? name;
         public ulong addr;
     };
 
@@ -34,12 +39,12 @@ namespace Nucleus
         public bool contains(ulong addr) { return (addr >= vma) && (addr - vma < size); }
         public bool is_import_table() { return name == ".plt"; }
 
-        public Binary binary;
-        public string name;
+        public Binary? binary;
+        public string? name;
         public SectionType type;
         public ulong vma;
         public ulong size;
-        public byte[] bytes;
+        public byte[]? bytes;
     };
 
     public class Binary
@@ -64,12 +69,12 @@ namespace Nucleus
 
         public Binary() { type = (0); arch = (0); bits = (0); entry = (0); }
 
-        public string filename;
+        public string? filename;
         public BinaryType type;
-        public string type_str;
+        public string? type_str;
         public BinaryArch arch;
-        public IProcessorArchitecture reko_arch;
-        public string arch_str;
+        public IProcessorArchitecture? reko_arch;
+        public string? arch_str;
         public uint bits;
         public ulong entry;
         public List<Section> sections = new();
@@ -99,7 +104,7 @@ namespace Nucleus
 
     partial class Nucleus
     {
-        static string[][] binary_types_descr = {
+        public static string[][] binary_types_descr = {
             new[] {"auto", "Try to automatically determine binary format (default)"},
             new[] {"raw" , "Raw binary (memory dump, ROM, network capture, ...)"},
             new[] {"elf" , "Unix ELF"},
@@ -111,8 +116,8 @@ namespace Nucleus
             ("aarch64" , Binary.BinaryArch.ARCH_AARCH64, "aarch64 (experimental)"),
             ("arm"     , Binary.BinaryArch.ARCH_ARM,     "arm (experimental)"),
             ("mips"    , Binary.BinaryArch.ARCH_MIPS,    "mips (experimental)"),
-            ("ppc"     , Binary.BinaryArch.ARCH_PPC, "ppc: Specify ppc-32 or ppc-64 (default ppc-64, experimental)"),
-            ("x86"     , Binary.BinaryArch.ARCH_X86, "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"),
+            ("ppc"     , Binary.BinaryArch.ARCH_PPC,    "ppc: Specify ppc-32 or ppc-64 (default ppc-64, experimental)"),
+            ("x86"     , Binary.BinaryArch.ARCH_X86,    "x86: Specify x86-16, x86-32 or x86-64 (default x86-64)"),
         };
 
         #region BFD
@@ -189,18 +194,21 @@ namespace Nucleus
         {
             bfd bin;
 
-            if (!bfd_inited) {
+            if (!bfd_inited)
+            {
                 bfd.init();
                 bfd_inited = true;
             }
 
             bin = bfd.openr(fname, null);
-            if (bin == null) {
+            if (bin == null)
+            {
                 Log.print_err("failed to open binary '{0}' ({1})", fname, bfd.errmsg(bfd.get_error()));
                 return null;
             }
 
-            if (!bfd.check_format(bin, bfd_object)) {
+            if (!bfd.check_format(bin, bfd_object))
+            {
                 Log.print_err("file '{0}' does not look like a binary object ({1}), maybe load as raw?", fname, bfd.errmsg(bfd.get_error()));
                 return null;
             }
@@ -210,7 +218,8 @@ namespace Nucleus
              * the format has been detected. We unset it manually to prevent problems. */
             bfd.set_error(bfd.error_no_error);
 
-            if (bfd.get_flavour(bin) == bfd.target_unknown_flavour) {
+            if (bfd.get_flavour(bin) == bfd.target_unknown_flavour)
+            {
                 Log.print_err("unrecognized format for binary '{0}' ({1})", fname, bfd.errmsg(bfd.get_error()));
                 return null;
             }
@@ -251,7 +260,7 @@ namespace Nucleus
                 }
                 nsyms = bfd_canonicalize_symtab(bfd_h, bfd_symtab);
                 if (nsyms < 0) {
-                    Log.Log.print_err("failed to read symtab (%s)", bfd_errmsg(bfd_get_error()));
+                    Log.Log.print_err("failed to read symtab ({0})", bfd_errmsg(bfd_get_error()));
                     goto fail;
                 }
                 for (i = 0; i < nsyms; i++) {
@@ -291,7 +300,7 @@ namespace Nucleus
 
             n = bfd.get_dynamic_symtab_upper_bound(bfd_h);
             if (n < 0) {
-                Log.Log.print_err("failed to read dynamic symtab (%s)", bfd_errmsg(bfd_get_error()));
+                Log.Log.print_err("failed to read dynamic symtab ({0})", bfd_errmsg(bfd_get_error()));
                 goto fail;
             } else if (n != 0) {
                 bfd_dynsym = (asymbol**)malloc(n);
@@ -301,7 +310,7 @@ namespace Nucleus
                 }
                 nsyms = bfd.canonicalize_dynamic_symtab(bfd_h, bfd_dynsym);
                 if (nsyms < 0) {
-                    Log.Log.print_err("failed to read dynamic symtab (%s)", bfd_errmsg(bfd_get_error()));
+                    Log.Log.print_err("failed to read dynamic symtab ({0})", bfd_errmsg(bfd_get_error()));
                     goto fail;
                 }
                 for (i = 0; i < nsyms; i++) {
@@ -370,7 +379,7 @@ namespace Nucleus
                 }
 
                 if (!bfd_get_section_contents(bfd_h, bfd_sec, sec.bytes, 0, size)) {
-                    Log.print_err("failed to read section '%s' (%s)", secname, bfd_errmsg(bfd_get_error()));
+                    Log.print_err("failed to read section '{0}' ({1})", secname, bfd_errmsg(bfd_get_error()));
                     return -1;
                 }
             }
@@ -379,8 +388,29 @@ namespace Nucleus
         }
 
 
-        static int load_binary_bfd(string fname, Binary bin, Binary.BinaryType type)
+        static int load_binary_reko(string fname, Binary bin, Binary.BinaryType type)
         {
+            var sc = new ServiceContainer();
+            var loader = new Loader(sc);
+            var location = ImageLocation.FromUri(fname);
+            var bytes = loader.LoadImageBytes(location);
+            var img = loader.ParseBinaryImage(location, bytes, new());
+            if (img is not Program program)
+            {
+                Log.print_err("'{0}' is not a recognized binary file.", fname);
+                return -1;
+            }
+
+            bin.sections = program.SegmentMap.Segments.Values.Select(s => mapRekoSection(s, bin))
+                .ToList();
+            bin.symbols = program.ImageSymbols.Values.Select(Nucleus.mapRekoSymbol)
+                .ToList();
+            bin.reko_arch = program.Architecture;
+            bin.arch = mapRekoArch(bin.reko_arch);
+            bin.bits = (uint)program.Architecture.WordWidth.BitSize;
+            bin.type = Binary.BinaryType.BIN_TYPE_AUTO;
+
+
             /*
   int ret;
   bfd *bfd_h;
@@ -406,7 +436,7 @@ namespace Nucleus
     break;
   case bfd_target_unknown_flavour:
   default:
-    Log.print_err("unsupported binary type (%s)", bfd_h.xvec.name);
+    Log.print_err("unsupported binary type ({0})", bfd_h.xvec.name);
     goto fail;
   }
 
@@ -422,7 +452,7 @@ namespace Nucleus
     bin.bits = 64;
     break;
   default:
-    Log.print_err("unsupported architecture (%s)", bfd_info.printable_name);
+    Log.print_err("unsupported architecture ({0})", bfd_info.printable_name);
     goto fail;
   }
 
@@ -447,6 +477,53 @@ namespace Nucleus
             return 0;
         }
 
+        public static 
+        Section mapRekoSection(ImageSegment source, Binary binary)
+        {
+            return new Section
+            {
+                binary = binary,
+                bytes = ((ByteMemoryArea)source.MemoryArea).Bytes,
+                name = source.Name,
+                size = source.Size,
+                type = Nucleus.mapRekoSectionType(source.Access),
+                vma = source.Address.ToLinear(),
+            };
+        }
+
+        public static
+        SectionType mapRekoSectionType(AccessMode mode)
+        {
+            if (mode.HasFlag(AccessMode.Execute))
+                return SectionType.CODE;
+            if (mode.HasFlag(AccessMode.Read))
+                return SectionType.DATA;
+            return SectionType.NONE;
+        }
+
+        private static 
+        Binary.BinaryArch mapRekoArch(IProcessorArchitecture arch)
+        {
+            return arch.Name switch
+            {
+                _ => throw new NotImplementedException($"Unimplemented architecture {arch.Name}.")
+            };
+        }
+
+        public static Symbol mapRekoSymbol(ImageSymbol sym)
+        {
+            return new Symbol
+            {
+                name = sym.Name,
+                addr = sym.Address.ToLinear(),
+                type = sym.Type switch
+                {
+                    SymbolType.Procedure => Symbol.SymbolType.SYM_TYPE_FUNC,
+                    _ => Symbol.SymbolType.SYM_TYPE_UKN,
+                }
+            };
+        }
+
 
         static int
         load_binary_raw(string fname, Binary bin, Binary.BinaryType type)
@@ -455,7 +532,8 @@ namespace Nucleus
             bin.type = type;
             bin.type_str = "raw";
 
-            if (options.binary.arch == Binary.BinaryArch.ARCH_NONE) {
+            if (options.binary.arch == Binary.BinaryArch.ARCH_NONE)
+            {
                 Log.print_err("cannot determine binary architecture, specify manually");
                 return -1;
             }
@@ -464,8 +542,10 @@ namespace Nucleus
             bin.arch_str = binary_arch_descr[(int)options.binary.arch].Item1;
             bin.entry = 0;
 
-            if (bin.bits == 0) {
-                switch (bin.arch) {
+            if (bin.bits == 0)
+            {
+                switch (bin.arch)
+                {
                 case Binary.BinaryArch.ARCH_X86:
                     bin.bits = 64;
                     break;
@@ -487,7 +567,8 @@ namespace Nucleus
                 //sec.bytes = generate_random_data(10);
                 sec.bytes = File.ReadAllBytes(fname);
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 Log.print_err("failed to open binary '{0}' ({1})", fname, ex.Message);
                 return -1;
             }
@@ -528,10 +609,13 @@ namespace Nucleus
 
         static int load_binary(string fname, Binary bin, Binary.BinaryType type)
         {
-            if (type == Binary.BinaryType.BIN_TYPE_RAW) {
+            if (type == Binary.BinaryType.BIN_TYPE_RAW)
+            {
                 return load_binary_raw(fname, bin, type);
-            } else {
-                return load_binary_bfd(fname, bin, type);
+            }
+            else
+            {
+                return load_binary_reko(fname, bin, type);
             }
         }
 

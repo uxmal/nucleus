@@ -4,6 +4,7 @@ using Reko.Core.Machine;
 using Reko.Core.Memory;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 
 namespace Nucleus
 {
@@ -116,17 +117,18 @@ namespace Nucleus
 
         public static IProcessorArchitecture create_architecture(Binary bin)
         {
+            var sc = new ServiceContainer();
             var options = new Dictionary<string, object>();
             switch (bin.bits)
             {
             case 64:
-                return new X86ArchitectureFlat64(null, "", options);
+                return new X86ArchitectureFlat64(sc, "", options);
             case 32:
-                return new X86ArchitectureFlat32(null, "", options);
+                return new X86ArchitectureFlat32(sc, "", options);
             case 16:
-                return new X86ArchitectureReal(null, "", options);
+                return new X86ArchitectureReal(sc, "", options);
             default:
-                Log.print_err("unsupported bit width {0} for architecture {1}", bin.bits, bin.arch_str);
+                Log.print_err("unsupported bit width {0} for architecture {1}", bin.bits, bin.arch_str!);
                 Environment.Exit(1);
                 return null;
             }

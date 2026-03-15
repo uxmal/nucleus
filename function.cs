@@ -65,7 +65,7 @@ namespace Nucleus
 
             if (entry.Count == 0)
             {
-                @out.WriteLine("0x{0:X16}\t{1,5}", 0, end - start);
+                @out.WriteLine($"0x{0:X16}\t{end-start,5}", 0, end - start);
             }
             else
             {
@@ -75,7 +75,7 @@ namespace Nucleus
                 {
                     if (e.type == Edge.EdgeType.EDGE_TYPE_CALL) offset = e.offset;
                 }
-                @out.WriteLine("0x{0:X16}\t{1}", entry_bb.start + (uint)offset, (end - entry_bb.start));
+                @out.WriteLine($"0x{entry_bb.start + (uint)offset:X16}\t{end - entry_bb.start}");
             }
         }
 

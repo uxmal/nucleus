@@ -13,7 +13,7 @@ namespace Nucleus
     public abstract class Strategy
     {
         public abstract double score_function(DisasmSection sec, BB bb);
-        public abstract uint mutate_function(DisasmSection sec, BB bb, ref BB[] mutants);
+        public abstract uint mutate_function(DisasmSection sec, BB? bb, ref BB[]? mutants);
         public abstract int select_function(DisasmSection sec, BB[] bb, int n);
     }
 
@@ -32,10 +32,9 @@ namespace Nucleus
 
             public override uint mutate_function(DisasmSection dis, BB parent, ref BB[] mutants)
             {
-                if (parent == null)
+                if (parent is null)
                 {
-                    mutants = new BB[] { new BB() };
-                    mutants[0] = new BB();
+                    mutants = [ new BB() ];
                     /* start disassembling at the start of the section */
                     mutants[0].set(dis.section.vma, 0);
                 }
@@ -177,7 +176,7 @@ namespace Nucleus
          ******************************************************************************/
         public class shingle_strategy : Strategy
         {
-            public override uint mutate_function(DisasmSection dis, BB parent, ref BB[] mutants)
+            public override uint mutate_function(DisasmSection dis, BB? parent, ref BB[]? mutants)
             {
                 if (parent is null)
                 {
@@ -228,7 +227,7 @@ namespace Nucleus
         /*******************************************************************************
          **                            dispatch functions                             **
          ******************************************************************************/
-        static (string, Type, string)[] strategy_functions = {
+        public static (string, Type, string)[] strategy_functions = {
             ("linear", typeof(linear_strategy), "Linear disassembly"),
             ("recursive", typeof(recursive_strategy), "Recursive disassembly (incomplete implementation, not recommended)"),
             ("shingle", typeof(shingle_strategy), "Shingle disassembly")
@@ -236,7 +235,7 @@ namespace Nucleus
 
 
 
-        static Type get_strategy_function_type()
+        static Type? get_strategy_function_type()
         {
             foreach (var sf in strategy_functions)
             {
@@ -248,13 +247,13 @@ namespace Nucleus
             return null;
         }
 
-        static int
+        public static int
         load_bb_strategy_functions()
         {
             var type = get_strategy_function_type();
             if (type != null)
             {
-                options.strategy.function = (Strategy)Activator.CreateInstance(type);
+                options.strategy.function = (Strategy)Activator.CreateInstance(type)!;
                 return 0;
             }
             else

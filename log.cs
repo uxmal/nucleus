@@ -5,7 +5,7 @@ namespace Nucleus
     partial class Log
     {
 
-        public static void verbose(int level, string fmt, params object[] args)
+        public static void verbose(int level, string fmt, params object?[] args)
         {
             if (Nucleus.options.verbosity >= level)
             {
@@ -13,7 +13,7 @@ namespace Nucleus
             }
         }
 
-        public static void print_warn(string fmt, params object[] args)
+        public static void print_warn(string fmt, params object?[] args)
         {
             if (Nucleus.options.warnings)
             {
@@ -22,7 +22,7 @@ namespace Nucleus
             }
         }
 
-        public static void print_err(string fmt, params object[] args)
+        public static void print_err(string fmt, params object?[] args)
         {
             Console.Error.Write("ERROR: ");
             Console.Error.WriteLine(fmt, args);

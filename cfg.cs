@@ -19,7 +19,7 @@ namespace Nucleus
 
         public Binary binary;
         public List<BB> entry = new();
-        public List<Function> functions = new();
+        public List<Function> functions = [];
         public SortedList<ulong, BB> start2bb = new();
         public SortedList<ulong, BB> bad_bbs = new();
 
@@ -41,7 +41,7 @@ namespace Nucleus
 
         void mark_addrtaken(ulong addr)
         {
-            if (this.start2bb.TryGetValue(addr, out BB cc))
+            if (this.start2bb.TryGetValue(addr, out BB? cc))
             {
                 if (!cc.addrtaken)
                 {
@@ -107,6 +107,7 @@ void analyze_addrtaken_x86()
       if((op_dst is RegisterStorage || op_dst is Reko.Arch.X86.MemoryOperand)) {
         if (op_src is Constant imm)
         {
+            Debug.Assert(this.binary.reko_arch is not null);
             if (this.binary.reko_arch.PointerType.BitSize == imm.DataType.BitSize)
             {
                 mark_addrtaken(imm.ToUInt64());
@@ -183,7 +184,7 @@ void analyze_addrtaken_x86()
         {
             ulong addr;
 
-            BB cc = null;
+            BB? cc = null;
             for (addr = start; addr < end; addr++)
             {
                 var (bb, _) = this.get_bb(addr);
@@ -337,7 +338,7 @@ find_switches_aarch64()
                             case_addr_abs = uint64_t(read_le_i64(jmptab64++));
                             break;
                         default:
-                            Log.print_warn("Unexpected scale factor in memory operand: %d", scale);
+                            Log.print_warn("Unexpected scale factor in memory operand: {0}", scale);
                             case_addr_abs = 0;
                             break;
                         }
@@ -368,14 +369,14 @@ find_switches_aarch64()
                         }
                         if (conflict_edge && (conflict_edge.jmptab <= jmptab_addr))
                         {
-                            verbose(3, "removing switch edge 0x%016jx . 0x%016jx (detected overlapping jump table or case)",
+                            verbose(3, "removing switch edge 0x{0:16x} -> 0x{1:16x} (detected overlapping jump table or case)",
                                     conflict_edge.src.insns[^1].start, case_addr);
                             unlink_edge(conflict_edge.src, cc);
                             conflict_edge = NULL;
                         }
                         if (!conflict_edge)
                         {
-                            verbose(3, "adding switch edge 0x%016jx . 0x%016jx", bb.insns[^1].start, case_addr);
+                            verbose(3, "adding switch edge 0x{0:16x} -> 0x{1:16x}", bb.insns[^1].start, case_addr);
                             link_bbs(Edge::EDGE_TYPE_JMP_INDIRECT, bb, case_addr, jmptab_addr);
                         }
                     }
@@ -390,10 +391,10 @@ find_switches_aarch64()
         }
     }
 #endif
-}
+        }
 
 
-void find_switches_arm()
+        void find_switches_arm()
 {
 #if !NYI
     int scale = 4;
@@ -402,7 +403,7 @@ void find_switches_arm()
     foreach (var bb in this.start2bb.Values)
     {
         jmptab_addr = 0;
-        Section target_sec = null;
+        Section? target_sec = null;
         /* If this BB ends in an indirect jmp, scan the BB for what looks like
          * instructions loading a target from a jump table */
         if (bb.insns[^1].edge_type() == Edge.EdgeType.EDGE_TYPE_JMP_INDIRECT)
@@ -456,13 +457,13 @@ void find_switches_arm()
             {
                 if (sec.contains(jmptab_addr))
                 {
-                    Log.verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)",
+                    Log.verbose(4, "parsing jump table at 0x{0:16x} (jump at {1:16x})",
                             jmptab_addr, bb.insns[^1].Address);
                     jmptab_idx = jmptab_addr - sec.vma;
                     jmptab_end = jmptab_addr;
                     var jmptab = new LeImageReader(sec.bytes, (long)jmptab_idx);
                             var wScale = PrimitiveType.CreateWord(scale * 8);
-                    while (jmptab.TryRead(wScale, out Constant case_addr))
+                    while (jmptab.TryRead(wScale, out Constant? case_addr))
                     {
                         jmptab_end += (uint)scale;
                         jmptab_idx += (uint)scale;
@@ -474,7 +475,7 @@ void find_switches_arm()
                         {
                             var (cc, offset) = this.get_bb(Address.FromConstant(case_addr));
                             if (cc is null) break;
-                            Edge conflict_edge = null;
+                            Edge? conflict_edge = null;
                             foreach (var e in cc.ancestors)
                             {
                                 if (e.is_switch)
@@ -485,14 +486,14 @@ void find_switches_arm()
                             }
                             if (conflict_edge is not null  && (conflict_edge.jmptab <= jmptab_addr))
                             {
-                                Log.verbose(3, "removing switch edge 0x%016jx . 0x%016jx (detected overlapping jump table or case)",
+                                Log.verbose(3, "removing switch edge 0x{0:16x} -> 0x{1:16x} (detected overlapping jump table or case)",
                                         conflict_edge.src.insns[^1].Address, case_addr);
                                 unlink_edge(conflict_edge.src, cc);
                                 conflict_edge = null;
                             }
                             if (conflict_edge is null)
                             {
-                                Log.verbose(3, "adding switch edge 0x%016jx . 0x%016jx", bb.insns[^1].Address, case_addr);
+                                Log.verbose(3, "adding switch edge 0x{0:16x} -> 0x{1:16x}", bb.insns[^1].Address, case_addr);
                                 link_bbs(Edge.EdgeType.EDGE_TYPE_JMP_INDIRECT, bb, case_addr.ToUInt64(), jmptab_addr);
                             }
                         }
@@ -642,7 +643,7 @@ void find_switches_mips()
             {
                 if (sec.contains(jmptab_addr))
                 {
-                    Log.verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)",
+                    Log.verbose(4, "parsing jump table at 0x{0:16x} (jump at {1:16x})",
                             jmptab_addr, bb.insns[^1].start);
                     jmptab_idx = jmptab_addr - sec.vma;
                     jmptab_end = jmptab_addr;
@@ -662,7 +663,7 @@ void find_switches_mips()
                             case_addr = uint64_t(read_be_i64(jmptab64++));
                             break;
                         default:
-                            print_warn("Unexpected scale factor in memory operand: %d", scale);
+                            print_warn("Unexpected scale factor in memory operand: {0}", scale);
                             case_addr = 0;
                             break;
                         }
@@ -686,14 +687,14 @@ void find_switches_mips()
                             }
                             if (conflict_edge && (conflict_edge.jmptab <= jmptab_addr))
                             {
-                                verbose(3, "removing switch edge 0x%016jx . 0x%016jx (detected overlapping jump table or case)",
+                                verbose(3, "removing switch edge 0x{0:16x} -> 0x{1:16x} (detected overlapping jump table or case)",
                                         conflict_edge.src.insns[^1].start, case_addr);
                                 unlink_edge(conflict_edge.src, cc);
                                 conflict_edge = NULL;
                             }
                             if (!conflict_edge)
                             {
-                                verbose(3, "adding switch edge 0x%016jx . 0x%016jx", bb.insns[^1].start, case_addr);
+                                verbose(3, "adding switch edge 0x{0:16x} -> 0x{1:16x}", bb.insns[^1].start, case_addr);
                                 link_bbs(Edge::EDGE_TYPE_JMP_INDIRECT, bb, case_addr, jmptab_addr);
                             }
                         }
@@ -709,10 +710,10 @@ void find_switches_mips()
         }
     }
 #endif
-}
+        }
 
 
-void find_switches_ppc()
+        void find_switches_ppc()
 {
     int scale;
     ulong jmptab_addr, jmptab_idx, jmptab_end, case_addr;
@@ -728,7 +729,7 @@ void find_switches_ppc()
     foreach (var bb in this.start2bb.Values)
     {
         jmptab_addr = 0;
-        Section target_sec = null;
+        Section? target_sec = null;
         /* If this BB ends in an indirect jmp, scan the BB for what looks like
          * instructions loading a target from a jump table */
         if (bb.insns[^1].edge_type() == Edge.EdgeType.EDGE_TYPE_JMP_INDIRECT)
@@ -817,7 +818,7 @@ void find_switches_ppc()
                         {
                             var (cc, offset) = this.get_bb(case_addr);
                             if (cc is null) break;
-                            Edge conflict_edge = null;
+                            Edge? conflict_edge = null;
                             foreach (var e in cc.ancestors)
                             {
                                 if (e.is_switch)
@@ -960,7 +961,7 @@ void find_switches_x86()
                             case_addr = jmptab64.ReadUInt64();
                             break;
                         default:
-                            Log.print_warn("Unexpected scale factor in memory operand: %d", scale);
+                            Log.print_warn("Unexpected scale factor in memory operand: {0}", scale);
                             case_addr = 0;
                             break;
                         }
@@ -991,7 +992,7 @@ void find_switches_x86()
                             }
                             if (conflict_edge is null)
                             {
-                                Log.verbose(3, "adding switch edge 0x%016jx -> 0x%016jx", bb.insns[^1].Address, case_addr);
+                                Log.verbose(3, "adding switch edge 0x{0:16x} -> 0x{1:16x}", bb.insns[^1].Address, case_addr);
                                 link_bbs(Edge.EdgeType.EDGE_TYPE_JMP_INDIRECT, bb, case_addr, jmptab_addr);
                             }
                         }
@@ -1007,7 +1008,7 @@ void find_switches_x86()
         }
     }
 #endif
-}
+        }
 
 
         void find_switches()
@@ -1031,7 +1032,7 @@ void find_switches_x86()
         find_switches_x86();
         break;
     default:
-        Log.print_warn("switch analysis not yet supported for %s", this.binary.arch_str);
+        Log.print_warn("switch analysis not yet supported for {0}", this.binary.arch_str);
         break;
     }
 
@@ -1039,7 +1040,7 @@ void find_switches_x86()
 }
 
 
-void expand_function(Function f, BB bb)
+void expand_function(Function f, BB? bb)
 {
     if (bb is null)
     {
@@ -1182,8 +1183,9 @@ void expand_function(Function f, BB bb)
             /* Mark BBs that may fall through to a blacklisted block as invalid */
             foreach (var bb in blacklist) {
                 bool invalid = true;
-                BB cc = bb;
+                BB? cc = bb;
                 while (invalid) {
+                    Debug.Assert(cc is not null);
                     (cc, _) = get_bb(cc.start - 1);
                     if (cc == null)
                         break;
@@ -1217,7 +1219,7 @@ void expand_function(Function f, BB bb)
             }
         }
 
-        (BB bb, int offset) get_bb(Address? addr)
+        (BB? bb, int offset) get_bb(Address? addr)
         {
             if (addr is null)
             {
@@ -1226,7 +1228,7 @@ void expand_function(Function f, BB bb)
             return get_bb(addr.Value.ToLinear());
         }
 
-        (BB bb, int offset) get_bb(ulong addr)
+        (BB? bb, int offset) get_bb(ulong addr)
         {
             if (this.start2bb.TryGetValue(addr, out var bb)) {
                 return (bb, 0);
@@ -1245,7 +1247,7 @@ void expand_function(Function f, BB bb)
                 {
                     hi = mid - 1;
                 }
-                else if (bb.end >= addr)
+                else if (bb.start >= addr)
                 {
                     lo = mid + 1;
                 }

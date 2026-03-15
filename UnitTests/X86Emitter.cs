@@ -3,11 +3,7 @@ using Reko.Core;
 using Reko.Core.Expressions;
 using Reko.Core.Machine;
 using Reko.Core.Types;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Nucleus.UnitTests
 {
@@ -41,6 +37,10 @@ namespace Nucleus.UnitTests
 
         private void EndBlock()
         {
+            if (this.bb is not null)
+            {
+                this.bb.end = addr.ToLinear();
+            }
             this.bb = null;
         }
 
@@ -48,6 +48,7 @@ namespace Nucleus.UnitTests
 
         public void label(string label)
         {
+            EndBlock();
             DefineSymbol(label);
         }
 

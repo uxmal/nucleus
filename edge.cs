@@ -42,5 +42,10 @@ namespace Nucleus
 
             return s;
         }
+
+        public override string ToString()
+        {
+            return $"{this.src:X16} {type2str()} -> {this.dst:X16}";
+        }
     }
 }

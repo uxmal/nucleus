@@ -47,7 +47,7 @@ namespace Nucleus
         public ulong start;
         public ulong end;
         public List<MachineInstruction> insns;
-        public Function function;
+        public Function? function;
         public Section section;
 
         public double score;

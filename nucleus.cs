@@ -14,12 +14,11 @@ namespace Nucleus
             Binary bin = new Binary();
             Section sec;
             Symbol sym;
-            List<DisasmSection> disasm = new List<DisasmSection>();
+            List<DisasmSection> disasm = [];
             CFG cfg = new CFG();
 
             try
             {
-
                 if (parse_options(args) < 0)
                 {
                     return 1;

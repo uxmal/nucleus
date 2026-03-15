@@ -7,7 +7,8 @@
     <AssemblyName>Nucleus</AssemblyName>
     <TargetFramework>net8.0</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <LangVersion>9.0</LangVersion>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
     <NoWarn>1701;1702;IDE1006</NoWarn>
   </PropertyGroup>
   <ItemGroup>
